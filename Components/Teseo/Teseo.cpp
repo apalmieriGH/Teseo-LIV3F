@@ -512,3 +512,17 @@ Teseo::reset(void)
 {
   _ResetFast();
 }
+
+gps_provider_error_t
+Teseo::configGeofences(GPSGeofence *geofences[])
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::geofenceReq(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}

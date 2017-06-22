@@ -254,6 +254,8 @@ private:
   virtual void lpmGetImmediateLocation(void);
   virtual void reset(void);
   virtual const GPSProvider::LocationUpdateParams_t *getLastLocation(void) const;
+  virtual gps_provider_error_t configGeofences(GPSGeofence *geofences[]);
+  virtual gps_provider_error_t geofenceReq(void);
 
   void _InitUART(int br = STD_UART_BAUD);
   void _ResetFast(Serial *serialDebug = NULL);
