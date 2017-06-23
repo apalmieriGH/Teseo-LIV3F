@@ -256,6 +256,12 @@ private:
   virtual const GPSProvider::LocationUpdateParams_t *getLastLocation(void) const;
   virtual gps_provider_error_t configGeofences(GPSGeofence *geofences[]);
   virtual gps_provider_error_t geofenceReq(void);
+  virtual gps_provider_error_t configLog(GPSDatalog *datalog);
+  virtual gps_provider_error_t startLog(void);
+  virtual gps_provider_error_t stopLog(void);
+  virtual gps_provider_error_t eraseLog(void);
+  virtual gps_provider_error_t logReqStatus(void);
+  virtual gps_provider_error_t logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery);
 
   void _InitUART(int br = STD_UART_BAUD);
   void _ResetFast(Serial *serialDebug = NULL);

@@ -526,3 +526,45 @@ Teseo::geofenceReq(void)
   /* TBI */
   return GPS_ERROR_NONE;
 }
+
+gps_provider_error_t
+Teseo::configLog(GPSDatalog *datalog)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::startLog(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::stopLog(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::eraseLog(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::logReqStatus(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
