@@ -563,7 +563,26 @@ Teseo::logReqStatus(void)
 }
 
 gps_provider_error_t
-logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery)
+Teseo::logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::startOdo(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+gps_provider_error_t
+Teseo::stopOdo(void)
+{
+  /* TBI */
+  return GPS_ERROR_NONE;
+}
+gps_provider_error_t
+Teseo::resetOdo(void)
 {
   /* TBI */
   return GPS_ERROR_NONE;
