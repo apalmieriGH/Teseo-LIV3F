@@ -155,7 +155,6 @@ Teseo::_ResetFast(Serial *serialDebug)
   
   if (serialDebug)
     serialDebug->printf("Done...\n\r");
-
 }
 
 void
@@ -240,12 +239,26 @@ Teseo::SendCommand(Teseo::eCmd c)
 {
   char crc[3];
   
-  _uart->baud(9600);
+  //_uart->baud(9600);
   
   sprintf(crc, "*%02X", _CRC(teseoCmds[c].cmd, -1));
-  
+
   _SendString(teseoCmds[c].cmd, strlen(teseoCmds[c].cmd));
   _SendString(crc, 3);
+}
+
+void
+Teseo::SendCommand(char *cmd)
+{
+  char crc[5];
+  
+  //_uart->baud(9600);
+  
+  sprintf(crc, "*%02X\n\r", _CRC(cmd, strlen(cmd)));
+  //printf("CRC=%s\n\r", crc);
+  
+  _SendString(cmd, strlen(cmd));
+  _SendString(crc, 5);
 }
 
 char *
@@ -298,38 +311,58 @@ Teseo::_CheckI2C()
   return res == 1 ? 0 : -1;
 }
 
+/*
+static void
+_ReadMessageCB(int narg) { 
+  //(void)buf; 
+  printf("ReadMessage DONE, event is %d\r\n", narg); 
+  printf("**** Test done ****\r\n");
+} 
+*/
 int
-Teseo::_ReadMessage(uint8_t *buf, unsigned long len, Timer *t, float timeout)
+Teseo::_ReadMessage(uint8_t *buf, int len, Timer *t, float timeout)
 {
+  //memset(buf, 0, len);
+  //_uart->read(buf, len, _ReadMessageCB, SERIAL_EVENT_RX_CHARACTER_MATCH/*SERIAL_EVENT_RX_COMPLETE*/, '\r');
+  
+  unsigned int i;
+  unsigned int now = 0;
+  
   memset(buf, 0, len);
   
-  _uart->baud(9600);
-  
-  for (unsigned int i = 0; i < len; ++i){
-    if (t) {
-      unsigned int now = t->read_ms();
-      while (!_uart->readable() && (now + timeout*1000) > t->read_ms());
-    } else
-      while (!_uart->readable());
-    if (_uart->readable())
-      buf[i] = _uart->getc();
+  if (t) {
+    now = t->read_ms();
   }
+  
+  //_uart->baud(9600);
+  
+  for (i = 0; i < len; ){
+
+    if (_uart->readable()) {
+      buf[i++] = _uart->getc();
+    }
+    
+    if (t && ((now + timeout*1000) <= t->read_ms())) break;
+  }
+  
 #if 0
+  unsigned int read = i;
   if (_serialDebug) {
     unsigned int i;
-    _serialDebug->printf("\n\r---------------------\n\r");
+    _serialDebug->printf("\n\r %d ---------------------\n\r", read);
     for (i = 0; i < len ; ++i)
       _serialDebug->putc((int)buf[i]);
     _serialDebug->printf("\n\r---------------------\n\r");
   }
 #endif
   return 0;
+
 }
 
 char *
 Teseo::ReadSentence(const char *msg)
 {
-  int ret = _ReadMessage(aRxBuffer, MAX_LEN);
+  int ret = _ReadMessage(aRxBuffer, MAX_LEN, &system_timer);
   if (ret) {
     return NULL;
   }
@@ -360,12 +393,32 @@ Teseo::eventHandler(eTeseoLocEventType event, uint32_t data)
   }
 }
 
+static void
+_UARTStreamProcess(Teseo *gnss)
+{
+  while(true) {
+    //TESEO_APP_LOG_INFO("_UARTCmdProcess\r\n");
+    gnss->process();
+    Thread::yield(); // Allow other threads to run
+  }
+}
+
 void
 Teseo::start(void)
 {
   if(_locState == TESEO_LOC_STATE_IDLE) {
     _InitUART();
     _locState = TESEO_LOC_STATE_RUN;
+    
+    system_timer.start();
+    
+    // Start thread for UART listener and set the highest priority
+    serialStreamThread = new (std::nothrow) Thread();
+    if(serialStreamThread != NULL) {
+      serialStreamThread->set_priority(osPriorityRealtime);
+      serialStreamThread->start(_UARTStreamProcess, this);
+    }
+
     eventHandler(TESEO_LOC_EVENT_START_RESULT, 0);
   } else {
     TESEO_LOG_INFO("Already started\r\n");
@@ -377,6 +430,11 @@ Teseo::stop(void)
 {
   if(_locState == TESEO_LOC_STATE_IDLE) {
     return;
+  }
+  // Stop thread for UART listener
+  if(serialStreamThread != NULL) {
+    serialStreamThread->terminate();
+    delete serialStreamThread;
   }
   
   _locState = TESEO_LOC_STATE_IDLE;
@@ -405,7 +463,46 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
     }
 
     break;
-    
+   
+  case LOC_OUTPUT_PSTM: {
+    Teseo::ePSTMsg msg = (Teseo::ePSTMsg)msgType;
+    switch(msg) {
+    case PSTMGEOFENCE: {
+      int code;
+      if(pData->geofence_data.op == GEOFENCESTATUSMSG) {
+        geofenceStatus.timestamp.hh = pData->geofence_data.timestamp.hh;
+        geofenceStatus.timestamp.mm = pData->geofence_data.timestamp.mm;
+        geofenceStatus.timestamp.ss = pData->geofence_data.timestamp.ss;
+        geofenceStatus.timestamp.day = pData->geofence_data.timestamp.day;
+        geofenceStatus.timestamp.month = pData->geofence_data.timestamp.month;
+        geofenceStatus.timestamp.year = pData->geofence_data.timestamp.year;
+        geofenceStatus.currentStatus = pData->geofence_data.status;
+        geofenceStatus.numGeofences = MAX_GEOFENCES_NUM;
+        code = pData->geofence_data.result ?
+          GPS_ERROR_GEOFENCES_STATUS_FAILED : GPS_ERROR_GEOFENCES_STATUS_SUCCESS;
+
+        if (geofenceStatusMessageCallback) {
+          geofenceStatusMessageCallback(&geofenceStatus, code);
+        }
+      }
+      
+      if(pData->geofence_data.op == GEOFENCECFGMSG) {
+        code = pData->geofence_data.result ?
+          GPS_ERROR_GEOFENCES_CFG_FAILED : GPS_ERROR_GEOFENCES_CFG_SUCCESS;
+        if (geofenceCfgMessageCallback) {
+          geofenceCfgMessageCallback(code);
+        }
+      }
+      
+      _locStateMutex.lock();
+      _locState = TESEO_LOC_STATE_RUN;
+      _locStateMutex.unlock();
+    }
+      break;
+    }
+  }
+    break;
+      
   default:
     break;
   }
@@ -413,6 +510,7 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
   if (appOutCb) {
     appOutCb(msgId, msgType, pData);
   }
+  
 }
 
 void
@@ -424,12 +522,6 @@ Teseo::_GetMsg(Teseo::eMsg msg)
   _ReadMessage(aRxBuffer, MAX_LEN);
 
   switch(msg) {
-  case GPGGA:
-    status = (eStatus)parse_gpgga(&pData.gpgga_data, aRxBuffer);
-    if(status == TESEO_STATUS_SUCCESS) {
-      outputHandler(LOC_OUTPUT_LOCATION, msg, &pData);
-    }
-    break;
 
   case GNS:
     status = (eStatus)parse_gnsmsg(&pData.gns_data, aRxBuffer);
@@ -473,19 +565,94 @@ Teseo::_GetMsg(Teseo::eMsg msg)
 }
 
 void
+Teseo::setVerboseMode(int level)
+{
+  _locStateMutex.lock();
+  if(level == 1) {
+    _locState = TESEO_LOC_STATE_RUN;
+  }
+  if(level == 2) {
+    _locState = TESEO_LOC_STATE_DEBUG;
+  }
+  _locStateMutex.unlock();  
+}
+
+void
+Teseo::_GetLocationMsg(Teseo::eMsg msg)
+{  
+  eStatus status;
+
+  memset(aRxBuffer, 0, MAX_LEN);
+  _ReadMessage(aRxBuffer, MAX_LEN);
+
+  status = (eStatus)parse_gpgga(&pData.gpgga_data, aRxBuffer);
+  if(status == TESEO_STATUS_SUCCESS) {
+    outputHandler(LOC_OUTPUT_LOCATION, msg, &pData);
+  }
+}
+  
+void
+Teseo::_GetPSTMsg(Teseo::ePSTMsg msg)
+{
+  eStatus status;
+
+  memset(aRxBuffer, 0, MAX_LEN);
+  _ReadMessage(aRxBuffer, MAX_LEN);
+
+  switch(msg) {
+
+  case PSTMGEOFENCE:
+    status = (eStatus)parse_pstmgeofence(&pData.geofence_data, aRxBuffer);
+    if(status == TESEO_STATUS_SUCCESS) {
+      outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
+    }
+    break;
+    
+  default:
+    break;
+  }
+
+}
+
+void
 Teseo::_TeseoLocProcessNmeaStream(void)
 {
+  //_GetLocationMsg(GPGGA);
+  
+  _GetPSTMsg(PSTMGEOFENCE);
+
+  /*
   for(int m = 0; m < NMEA_MSGS_NUM; m++) {
     _GetMsg((eMsg)m);
   }
+  */
+  
 }
 
 void
 Teseo::process(void)
-{  
+{
+  /*
   if(_locState == TESEO_LOC_STATE_RUN) {
     _TeseoLocProcessNmeaStream();
   }
+  */
+  
+  _locStateMutex.lock();
+  if(_locState == TESEO_LOC_STATE_GEOFENCE) {
+    _GetPSTMsg(PSTMGEOFENCE);
+  }
+  
+  if(_locState == TESEO_LOC_STATE_RUN) {
+    _GetLocationMsg(GPGGA);
+  }
+  
+  if(_locState == TESEO_LOC_STATE_DEBUG) {
+    for(int m = 0; m < NMEA_MSGS_NUM; m++) {
+      _GetMsg((eMsg)m);
+    }
+  }
+  _locStateMutex.unlock();
 }
 
 uint32_t
@@ -510,20 +677,138 @@ Teseo::getLastLocation(void) const
 void
 Teseo::reset(void)
 {
-  _ResetFast();
+  _ResetFast(_serialDebug);
 }
 
-gps_provider_error_t
-Teseo::configGeofences(GPSGeofence *geofences[])
+void
+Teseo::cfgMessageList(void)
+{  
+  sprintf(cfg, "$PSTMCFGMSGL,%d,%d,%x,%x",
+          0, /*NMEA 0*/
+          1, /*Rate*/
+          0,
+          0/*x80000*/);
+  SendCommand(cfg);
+  
+  sprintf(cfg, "$PSTMSAVEPAR");
+  SendCommand(cfg);
+  
+  reset();
+  
+}
+
+bool
+Teseo::isGeofencingSupported(void)
 {
-  /* TBI */
+  return true;
+}
+
+void
+Teseo::enableGeofence(void)
+{
+  sprintf(cfg, "$PSTMCFGGEOFENCE,%d,%d",1,1);
+  SendCommand(cfg);
+
+  sprintf(cfg, "$PSTMSAVEPAR");
+  SendCommand(cfg);
+  
+  reset();
+}
+
+void
+Teseo::cfgGeofenceCircle(void)
+{
+  GPSGeofence::GeofenceCircle_t circle = {
+    .id = 0,
+    .enabled = 1,
+    .tolerance = 1,
+    .lat = 40.336055,
+    .lon = 18.120611,
+    .radius = 200
+  };
+  
+  sprintf(cfg, "$PSTMCFGGEOCIR,%d,%d,%lf,%lf,%lf",
+          circle.id,
+          circle.enabled,
+          circle.lat,
+          circle.lon,
+          circle.radius);
+  SendCommand(cfg);
+
+  sprintf(cfg, "$PSTMSAVEPAR");
+  SendCommand(cfg);
+  
+  reset();
+}
+
+
+gps_provider_error_t
+Teseo::configGeofences(GPSGeofence *geofences[], unsigned geofenceCount)
+{
+  uint8_t trials;
+
+  //enableGeofence();
+  //cfgGeofenceCircle();
+  //return GPS_ERROR_NONE;
+  //cfgMessageList();
+  
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_GEOFENCE;
+  _locStateMutex.unlock();
+     
+  if(geofenceCount > MAX_GEOFENCES_NUM) {
+    return GPS_ERROR_GEOFENCES_MAX_EXCEEDED;
+  }
+  
+  for(uint8_t i = 0; i < geofenceCount; i++) {
+    trials = 1;
+    //printf("Teseo::configGeofences id=%d\r\n", (geofences[i]->getGeofenceCircle()).id);
+    /*
+    printf("Teseo::configGeofences en=%d\r\n", en);
+    printf("Teseo::configGeofences tol=%d\r\n", (geofences[i]->getGeofenceCircle()).tolerance);
+    printf("Teseo::configGeofences lat=%02f\r\n", (geofences[i]->getGeofenceCircle()).lat);
+    printf("Teseo::configGeofences lon=%02f\r\n", (geofences[i]->getGeofenceCircle()).lon);
+    printf("Teseo::configGeofences radius=%02f\r\n", (geofences[i]->getGeofenceCircle()).radius);
+    */
+    sprintf(cfg, "$PSTMGEOFENCECFG,%d,%d,%d,%lf,%lf,%lf",
+            (geofences[i]->getGeofenceCircle()).id,
+            (geofences[i]->getGeofenceCircle()).enabled,
+            (geofences[i]->getGeofenceCircle()).tolerance,
+            (geofences[i]->getGeofenceCircle()).lat,
+            (geofences[i]->getGeofenceCircle()).lon,
+            (geofences[i]->getGeofenceCircle()).radius);
+    
+    do{
+      trials--; 
+      
+      SendCommand(cfg);
+      /*
+      sprintf(cfg, "$PSTMCFGGEOFENCE,%d,%d\n\r",1,1);
+      
+      //sprintf(cfg, "$PSTMGETSWVER,6");
+      SendCommand(cfg);
+      
+      sprintf(cfg, "$PSTMSAVEPAR\n\r");
+      SendCommand(cfg);
+      */
+      //printf("Teseo::configGeofences cfg=%s\r\n", cfg);
+    } while (trials > 0);
+  }
+  //printf("Teseo::configGeofences sizeof(geofences)=%d numGeofences=%d strlen(cfg)=%d\r\n", sizeof(geofences), numGeofences, strlen(cfg));
+
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
 Teseo::geofenceReq(void)
 {
-  /* TBI */
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_GEOFENCE;
+  _locStateMutex.unlock();
+
+  sprintf(cfg, "$PSTMGEOFENCEREQ");
+  SendCommand(cfg);
+
   return GPS_ERROR_NONE;
 }
 

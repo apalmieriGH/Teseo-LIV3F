@@ -91,7 +91,7 @@ extern "C" {
 /**
  * @brief Constant that indicates the maximum lenght of NMEA message field.
  */
-#define MAX_MSG_LEN 19
+#define MAX_MSG_LEN 32//19
 /**
  * @}
  */  
@@ -126,8 +126,8 @@ typedef enum {
  * @brief Data structure that contains the coordinates informations
  */
 typedef struct Coords {
-  float lat;   /**< Latitude */
-  float lon;   /**< Longitude */
+  double lat;   /**< Latitude */
+  double lon;   /**< Longitude */
   float alt;   /**< Altitude */
   uint8_t ns;  /**< Nord / Sud latitude type */
   uint8_t ew;  /**< East / West longitude type */
@@ -249,6 +249,38 @@ typedef struct GSV_Infos {
   GSV_SAT_Info gsv_sat_i[MAX_SAT_NUM];  /**< Satellite info  */
   int checksum;                         /**< Checksum of the message bytes */
 } GSV_Infos;
+
+#define GEOFENCECFGMSG 0
+#define GEOFENCESTATUSMSG 1
+#define MAX_GEOFENCES_NUM 8
+static char *geofenceCirclePosition[] = {
+  "Unknown",
+  "Outside",
+  "Boundary",
+  "Inside"
+};
+/**
+ * @brief Data structure that contains timestamp
+ */
+typedef struct Timestamp_Info {
+  int hh;  /**< Hours */
+  int mm;  /**< Minutes */
+  int ss;  /**< Seconds */
+  int year;  /**< Year */
+  int month;  /**< Month */
+  int day;  /**< Day */
+} Timestamp_Info;
+
+/**
+ * @brief Data structure that contains all of the informations about Geofence 
+ */
+typedef struct Geofence_Infos {
+  uint8_t op;          /**< Geofence message (configuration/status) */
+  uint8_t result;      /**< Geofence cfg/request result (OK/ERROR) */
+  Timestamp_Info timestamp;
+  int status[MAX_GEOFENCES_NUM];
+} Geofence_Infos;
+
 /**
  * @}
  */
@@ -263,6 +295,8 @@ ParseStatus_Typedef parse_gprmc  (GPRMC_Infos *gprmc_data, uint8_t *NMEA);
 ParseStatus_Typedef parse_gsamsg (GSA_Infos   *gsa_data,   uint8_t *NMEA);
 ParseStatus_Typedef parse_gsvmsg (GSV_Infos   *gsv_data,   uint8_t *NMEA);
 void                copy_data    (GPGGA_Infos *, GPGGA_Infos);
+
+ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *NMEA);
 /**
  * @}
  */

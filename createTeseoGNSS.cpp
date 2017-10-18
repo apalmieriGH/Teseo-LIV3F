@@ -279,7 +279,7 @@ GetGPRMCInfos(tTeseoData *pData)
  * @param  pData
  * @retval None
  */
-void
+static void
 GetGSAMsgInfos(tTeseoData *pData)
 {
   char msg[256];
@@ -360,7 +360,7 @@ GetGSAMsgInfos(tTeseoData *pData)
  * @param  pData
  * @retval None
  */
-void
+static void
 GetGSVMsgInfos(tTeseoData *pData)
 {
   uint8_t i;
@@ -432,16 +432,60 @@ GetGSVMsgInfos(tTeseoData *pData)
   
 }
 
+/** 
+ * @brief  This function prints on the console the info about GNSS satellites got by the most recent reception process
+ * @param  pData
+ * @retval None
+ */
+static void
+GetGeofenceInfos(tTeseoData *pData)
+{
+  char msg[256];
+  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+  if(pData->geofence_data.op == GEOFENCECFGMSG) {
+    sprintf(msg, "Geofence Configuration:\t\t[ %s ]\t",
+          pData->geofence_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->geofence_data.op == GEOFENCESTATUSMSG) {
+    sprintf(msg, "Geofence Status:\t\t[ %s ]\t",
+          pData->geofence_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+    if(pData->geofence_data.result == 0) {
+      TESEO_APP_LOG_INFO("\r\n");
+      sprintf(msg, "Time/Date:\t\t%02d:%02d:%02d %02d/%02d/%04d\n",
+          pData->geofence_data.timestamp.hh,
+          pData->geofence_data.timestamp.mm,
+          pData->geofence_data.timestamp.ss,
+          pData->geofence_data.timestamp.day,
+          pData->geofence_data.timestamp.month,
+          pData->geofence_data.timestamp.year);
+      TESEO_APP_LOG_INFO(msg);
+      
+      for(uint8_t i = 0; i<MAX_GEOFENCES_NUM; i++) {
+        sprintf(msg, "Position circle[%d]:\t%s\n",
+          i, geofenceCirclePosition[pData->geofence_data.status[i]]);
+        TESEO_APP_LOG_INFO(msg);
+      }
+    }
+  }  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+}
+
 void
 _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
 {
   switch (msgId) {
   case LOC_OUTPUT_LOCATION: {
     // Output last location
-    TESEO_APP_LOG_INFO("Loc: lat=%f, lon=%f, alt=%f\r\n", pData->gpgga_data.xyz.lat, pData->gpgga_data.xyz.lon, pData->gpgga_data.xyz.alt);
+    TESEO_APP_LOG_INFO("Loc: lat=%lf, lon=%lf, alt=%f\r\n", pData->gpgga_data.xyz.lat, pData->gpgga_data.xyz.lon, pData->gpgga_data.xyz.alt);
     break;
   }
   case LOC_OUTPUT_NMEA: {
+    //return;
     Teseo::eMsg msg = (Teseo::eMsg)msgType;
     switch(msg) {
     case Teseo::GNS:
@@ -469,6 +513,18 @@ _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
       GetGSVMsgInfos(pData);
       break;
       
+    default:
+      break;
+    }
+    break;
+  }
+  case LOC_OUTPUT_PSTM: {
+    Teseo::ePSTMsg msg = (Teseo::ePSTMsg)msgType;
+    switch(msg) {
+    case Teseo::PSTMGEOFENCE:
+      // GET Geofence info
+      GetGeofenceInfos(pData);
+      break;
     default:
       break;
     }

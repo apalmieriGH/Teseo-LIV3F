@@ -93,9 +93,10 @@ void scan_utc (char* utc_str, UTC_Info* utc) {
  */
 void scan_xy (char* xy_str, uint8_t str_offset, Coords* xy) 
 {  
-  sscanf(xy_str,                "%f", &xy->lat);
+  //printf("NMEA (xy_str): %s\n\r", xy_str);
+  sscanf(xy_str,                "%lf", &xy->lat);
   sscanf(xy_str+str_offset,     "%c", &xy->ns);
-  sscanf(xy_str+(2*str_offset), "%f", &xy->lon);
+  sscanf(xy_str+(2*str_offset), "%lf", &xy->lon);
   sscanf(xy_str+(3*str_offset), "%c", &xy->ew);
    
   return;  

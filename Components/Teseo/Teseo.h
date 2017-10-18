@@ -51,7 +51,7 @@
 #include "TeseoConfig.h"
 #include "NMEAParser.h"
 
-#define STD_UART_BAUD                   9600
+#define STD_UART_BAUD               9600//    9600
 #define FWU_UART_BAUD               115200
 #define TESEO_I2C_ADDRESS           0x3A
 #define POWERON_STABLE_SIGNAL_DELAY_MS  150
@@ -59,6 +59,7 @@
 /** Indicates the outputted location information */
 #define LOC_OUTPUT_LOCATION             (1)
 #define LOC_OUTPUT_NMEA                 (2)
+#define LOC_OUTPUT_PSTM                 (3)
 
 #if 1
 #define TESEO_LOG_INFO(...)
@@ -74,6 +75,11 @@
  * @brief Constant that indicates the maximum number of nmea messages to be processed.
  */
 #define NMEA_MSGS_NUM 6 //Note: update this constant coherently to eMsg enum type
+
+/**
+ * @brief Constant that indicates the maximum number of proprietary nmea messages to be processed.
+ */
+#define PSTM_NMEA_MSGS_NUM 1 //Note: update this constant coherently to ePSTMsg enum type
 
 /**
  * @brief Constant that indicates the maximum number of positions that can be stored.
@@ -105,6 +111,8 @@ typedef enum {
 typedef enum {
     TESEO_LOC_STATE_IDLE,
     TESEO_LOC_STATE_RUN,
+    TESEO_LOC_STATE_GEOFENCE,
+    TESEO_LOC_STATE_DEBUG
 } eTeseoLocState;
 
 /**
@@ -126,6 +134,8 @@ typedef struct TeseoData {
   GPRMC_Infos gprmc_data; /**< $GPRMC Data holder */
   GSA_Infos   gsa_data;   /**< $--GSA Data holder */
   GSV_Infos   gsv_data;   /**< $--GSV Data holder */
+  
+  Geofence_Infos   geofence_data;   /**< Geofence Data holder */
 } tTeseoData;
 
 /** Application register this out callback function and Teseo class will pass outputted information to application */
@@ -143,7 +153,7 @@ public:
     RFTESTON,
     RFTESTOFF,
     LOWPOWER,
-    FWUPDATE,
+    FWUPDATE
   } eCmd;
 
   /** NMEA messages types */
@@ -153,11 +163,19 @@ public:
     GPGST,
     GPRMC,
     GSA,
-    GSV
+    GSV,
   } eMsg;
   
+  /** NMEA proprietary messages types */
+  typedef enum {
+    PSTMGEOFENCE
+  } ePSTMsg;
+
 private:
 
+  Timer system_timer;
+
+  Mutex          _locStateMutex;
   eTeseoLocState _locState;
     
   DigitalOut    _loc_led2;
@@ -174,8 +192,15 @@ private:
   tTeseoData pData;
   uint8_t aRxBuffer[MAX_LEN];
   GPGGA_Infos stored_positions[MAX_STOR_POS];
-  
+
   int FwWaitAck();
+
+  Thread *serialStreamThread;
+
+  /**
+   * Command string
+   */
+  char cfg[MAX_LEN];
 
 public:
   
@@ -235,6 +260,7 @@ public:
   void TeseoLocRegOutput(teseo_app_output_callback app_output_cb, teseo_app_event_callback app_event_cb);
   
   void SendCommand(Teseo::eCmd c);
+  void SendCommand(char *cmd);
   
   int EnableLowPower();
   
@@ -244,20 +270,29 @@ public:
     return _wakeup.read() ? TESEO_STATUS_SUCCESS : TESEO_STATUS_FAILURE;
   }
      
+  virtual void process(void);
 private:
   
   virtual bool setPowerMode(GPSProvider::PowerMode_t pwrMode);
   virtual void start(void);
   virtual void stop(void);
-  virtual void process(void);
+  //virtual void process(void);
   virtual uint32_t ioctl(uint32_t command, void *arg);
   virtual void lpmGetImmediateLocation(void);
   virtual void reset(void);
   virtual const GPSProvider::LocationUpdateParams_t *getLastLocation(void) const;
 
+  void cfgMessageList(void);
+  
+  /** For verbose NMEA stream */
+  virtual void setVerboseMode(int level);
+
   /** Geofencing */
-  virtual gps_provider_error_t configGeofences(GPSGeofence *geofences[]);
+  virtual bool isGeofencingSupported(void);
+  virtual gps_provider_error_t configGeofences(GPSGeofence *geofences[], unsigned geofenceCount);
   virtual gps_provider_error_t geofenceReq(void);
+  void enableGeofence(void);
+  void cfgGeofenceCircle(void);
 
   /** Datalogging */
   virtual gps_provider_error_t configLog(GPSDatalog *datalog);
@@ -280,13 +315,21 @@ private:
   int _CRC(char *buf, int size);
   char* _DetectSentence(const char *cmd, uint8_t *buf, unsigned long len);
   int _CheckI2C();
-  int _ReadMessage(uint8_t *buf, unsigned long len, Timer *t = NULL, float timout = 0.0);
+  int _ReadMessage(uint8_t *buf, int len, Timer *t = NULL, float timeout = 0.5);
+  //void _ReadMessageCB(/*uint8_t *buf,*/ int narg);
   /**
    * @brief  This function gets a chunck of NMEA messages
    * @param  msg NMEA message to search for
    * @retval eStatus TESEO_STATUS_SUCCESS if the parse process goes ok, TESEO_FAILURE if it doesn't
    */
   void _GetMsg(Teseo::eMsg msg);
+  /**
+   * @brief  This function gets a chunck of PSTM NMEA messages
+   * @param  msg PSTM NMEA message to search for
+   * @retval eStatus TESEO_STATUS_SUCCESS if the parse process goes ok, TESEO_FAILURE if it doesn't
+   */
+  void _GetPSTMsg(Teseo::ePSTMsg msg);
+  void _GetLocationMsg(Teseo::eMsg msg);
   void _TeseoLocProcessNmeaStream(void);
   
   void _LocLed2Set(void){
@@ -295,10 +338,7 @@ private:
   void _LocLed2Reset(void){
     _loc_led2.write(0);
   }
-
   
-  
-
   void outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData);
   void eventHandler(eTeseoLocEventType event, uint32_t data);
   

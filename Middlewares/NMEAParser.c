@@ -113,9 +113,12 @@ ParseStatus_Typedef parse_gpgga(GPGGA_Infos *gpgga_data, uint8_t *NMEA)
     unsigned int valid;
     sscanf ((char *)app[6], "%u", &valid);
     gpgga_data->valid = (GPS_ValidTypedef)valid;
-    if (gpgga_data->valid == VALID) {            
+    if (gpgga_data->valid == VALID) {
       scan_utc ((char *)app[1],  &gpgga_data->utc);
-      scan_xy  ((char *)app[2],  MAX_MSG_LEN, &gpgga_data->xyz);
+      sscanf  ((char *)app[2],  "%lf", &gpgga_data->xyz.lat);
+      sscanf  ((char *)app[3],  "%c", &gpgga_data->xyz.ns);
+      sscanf  ((char *)app[4],  "%lf", &gpgga_data->xyz.lon);
+      sscanf  ((char *)app[5],  "%c", &gpgga_data->xyz.ew);
       sscanf   ((char *)app[7],  "%d", &gpgga_data->sats);
       sscanf   ((char *)app[8],  "%f", &gpgga_data->acc);
       sscanf   ((char *)app[9],  "%f", &gpgga_data->xyz.alt);
@@ -494,6 +497,90 @@ ParseStatus_Typedef parse_gsvmsg(GSV_Infos *gsv_data, uint8_t *NMEA)
     }
   }
   
+  return status;
+}
+
+/**
+ * @brief  
+ * @param  Geofence_Infos Pointer to a Geofence_Infos struct
+ * @param  NMEA           NMEA string read by the Gps expansion.
+ * @retval ParseStatus_Typedef PARSE_SUCC if the parsing process goes ok, PARSE_FAIL if it doesn't
+ */
+ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *NMEA)
+{
+  uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
+  uint8_t valid_msg = 0;
+  int l;
+  
+  ParseStatus_Typedef status = PARSE_FAIL;
+#if 0
+  printf("\n\r ------- parse_pstmgeofence --------------\n\r");
+  for (int i = 0; i < 2048 ; ++i) {
+    printf("%c",(int)NMEA[i]);
+  }
+  printf("\n\r----parse_pstmgeofence-----------------\n\r");
+#endif /*0*/
+  if(NMEA == NULL)
+    return status;
+
+  /* clear the app[][] buffer */ 
+  for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
+    memset(app[i], 0, MAX_MSG_LEN);
+  }
+    
+  for(l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
+  
+  for(int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  {  
+    if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
+      app[j][k] = '\0';
+#if 0
+      printf("app[0] = %s\n\r",(char *)app[0]);
+#endif /*0*/
+      if ((strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) ||
+          (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) ||
+          (strcmp((char *)app[0], "$PSTMGEOFENCEREQERROR") == 0)) {
+        j++;
+        k = 0;
+        valid_msg = 1;
+        continue;
+      }
+      else {
+        while(NMEA[i++] != '\n');
+        j = k = 0;
+      }
+    }
+    app[j][k++] = NMEA[i];
+  }
+  
+  if (valid_msg == 1) {
+    
+    if (strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) {
+      geofence_data->op = GEOFENCECFGMSG;
+      geofence_data->result = 0;
+    }
+    if (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) {
+      geofence_data->op = GEOFENCECFGMSG;
+      geofence_data->result = 1;
+    }
+    if (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) {
+      geofence_data->op = GEOFENCESTATUSMSG;
+      geofence_data->result = 0;
+      sscanf((char *)app[1], "%02d%02d%02d", &geofence_data->timestamp.hh,&geofence_data->timestamp.mm,&geofence_data->timestamp.ss);
+      sscanf((char *)app[2], "%04d%02d%02d", &geofence_data->timestamp.year,&geofence_data->timestamp.month,&geofence_data->timestamp.day);
+      for(uint8_t i = 0; i<MAX_GEOFENCES_NUM; i++) {
+        sscanf((char *)app[3+i], "%d", &geofence_data->status[i]);
+      }
+    }
+    if (strcmp((char *)app[0], "$PSTMGEOFENCEREQERROR") == 0) {
+      geofence_data->op = GEOFENCESTATUSMSG;
+      geofence_data->result = 1;
+    }
+    
+    valid_msg = 0;
+    status = PARSE_SUCC;
+  }
   return status;
 }
 
