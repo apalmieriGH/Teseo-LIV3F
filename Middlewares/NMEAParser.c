@@ -76,7 +76,6 @@ ParseStatus_Typedef parse_gpgga(GPGGA_Infos *gpgga_data, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -87,10 +86,8 @@ ParseStatus_Typedef parse_gpgga(GPGGA_Infos *gpgga_data, uint8_t *NMEA)
   for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
     memset(app[i], 0, MAX_MSG_LEN);
   }
-    
-  for(l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
-  
-  for(int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+ 
+  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -145,7 +142,6 @@ ParseStatus_Typedef parse_gnsmsg (GNS_Infos *gns_data, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -156,10 +152,8 @@ ParseStatus_Typedef parse_gnsmsg (GNS_Infos *gns_data, uint8_t *NMEA)
   for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
     memset(app[i], 0, MAX_MSG_LEN);
   }
-    
-  for (l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
   
-  for (int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -215,7 +209,6 @@ ParseStatus_Typedef parse_gpgst (GPGST_Infos *gpgst_data, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -226,10 +219,8 @@ ParseStatus_Typedef parse_gpgst (GPGST_Infos *gpgst_data, uint8_t *NMEA)
   for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
     memset(app[i], 0, MAX_MSG_LEN);
   }
-    
-  for (l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
-  
-  for (int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+
+  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -277,7 +268,6 @@ ParseStatus_Typedef parse_gprmc (GPRMC_Infos *gprmc_data, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -289,9 +279,7 @@ ParseStatus_Typedef parse_gprmc (GPRMC_Infos *gprmc_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
   
-  for (l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
-  
-  for (int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -340,7 +328,6 @@ ParseStatus_Typedef parse_gsamsg (GSA_Infos *gsa_data, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -351,10 +338,8 @@ ParseStatus_Typedef parse_gsamsg (GSA_Infos *gsa_data, uint8_t *NMEA)
   for (uint8_t i=0; i<19; i++) {
     memset(app[i], 0, 19);
   }
-    
-  for (l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
   
-  for (int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -412,14 +397,13 @@ ParseStatus_Typedef parse_gsvmsg(GSV_Infos *gsv_data, uint8_t *NMEA)
   int curr_msg;
   uint8_t right_msg = 0;
   uint8_t valid_gsv_msg = 0;
-  int i, j, k, l;
+  int i, j, k;
+  int l = 0;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
   if(NMEA == NULL)
     return status;
-  
-  for (l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
   
   while (right_msg < msg_amount)
   {
@@ -428,7 +412,7 @@ ParseStatus_Typedef parse_gsvmsg(GSV_Infos *gsv_data, uint8_t *NMEA)
       memset(app[pos], 0, 16);
     }
         
-    for (i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+    for (i = l, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
     {
       if (NMEA[i] == ',') {
         app[j][k] = '\0';
@@ -510,16 +494,9 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
-  int l;
   
   ParseStatus_Typedef status = PARSE_FAIL;
-#if 0
-  printf("\n\r ------- parse_pstmgeofence --------------\n\r");
-  for (int i = 0; i < 2048 ; ++i) {
-    printf("%c",(int)NMEA[i]);
-  }
-  printf("\n\r----parse_pstmgeofence-----------------\n\r");
-#endif /*0*/
+
   if(NMEA == NULL)
     return status;
 
@@ -527,16 +504,12 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
   for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
     memset(app[i], 0, MAX_MSG_LEN);
   }
-    
-  for(l = 0; NMEA[l] != '\n' && l < strlen((char *)NMEA) - 1; l++);
-  
-  for(int i = l + 1, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+ 
+  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
-#if 0
-      printf("app[0] = %s\n\r",(char *)app[0]);
-#endif /*0*/
+
       if ((strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) ||

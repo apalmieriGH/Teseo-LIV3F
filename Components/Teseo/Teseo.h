@@ -89,7 +89,9 @@
 /**
  * @brief Constant that indicates the lenght of the buffer that stores the GPS data read by the GPS expansion.
  */
-#define MAX_LEN 2*512
+
+#define TESEO_RXBUF_LEN		90
+#define TESEO_RXQUEUE_LEN	8
 
 /**
  * @brief Enumeration structure that containes the two success states of a process
@@ -173,8 +175,6 @@ public:
 
 private:
 
-  Timer system_timer;
-
   Mutex          _locStateMutex;
   eTeseoLocState _locState;
     
@@ -190,7 +190,6 @@ private:
   I2C           *_i2c;
         
   tTeseoData pData;
-  uint8_t aRxBuffer[MAX_LEN];
   GPGGA_Infos stored_positions[MAX_STOR_POS];
 
   int FwWaitAck();
@@ -200,8 +199,16 @@ private:
   /**
    * Command string
    */
-  char cfg[MAX_LEN];
+  char _teseoCmd[TESEO_RXBUF_LEN];
 
+  /**
+   * Message struct
+   */
+  struct _teseoMsg {
+    uint8_t len;
+    uint8_t buf[TESEO_RXBUF_LEN];
+  };
+  
 public:
   
   /** Constructor: Teseo
@@ -264,19 +271,20 @@ public:
   
   int EnableLowPower();
   
-  char *ReadSentence(const char *msg);
+  void ReadSentence(Teseo::eMsg msg);
     
   eStatus WakeStatus(void){
     return _wakeup.read() ? TESEO_STATUS_SUCCESS : TESEO_STATUS_FAILURE;
   }
      
-  virtual void process(void);
+  void ReadProcess(void);
+
 private:
   
   virtual bool setPowerMode(GPSProvider::PowerMode_t pwrMode);
   virtual void start(void);
   virtual void stop(void);
-  //virtual void process(void);
+  virtual void process(void);
   virtual uint32_t ioctl(uint32_t command, void *arg);
   virtual void lpmGetImmediateLocation(void);
   virtual void reset(void);
@@ -313,24 +321,20 @@ private:
   void _SendString(char *buf, int len);
   int _WakeUp();
   int _CRC(char *buf, int size);
-  char* _DetectSentence(const char *cmd, uint8_t *buf, unsigned long len);
   int _CheckI2C();
-  int _ReadMessage(uint8_t *buf, int len, Timer *t = NULL, float timeout = 0.5);
-  //void _ReadMessageCB(/*uint8_t *buf,*/ int narg);
   /**
    * @brief  This function gets a chunck of NMEA messages
    * @param  msg NMEA message to search for
    * @retval eStatus TESEO_STATUS_SUCCESS if the parse process goes ok, TESEO_FAILURE if it doesn't
    */
-  void _GetMsg(Teseo::eMsg msg);
+  eStatus _GetMsg(Teseo::eMsg msg, uint8_t *buffer);
   /**
    * @brief  This function gets a chunck of PSTM NMEA messages
    * @param  msg PSTM NMEA message to search for
    * @retval eStatus TESEO_STATUS_SUCCESS if the parse process goes ok, TESEO_FAILURE if it doesn't
    */
-  void _GetPSTMsg(Teseo::ePSTMsg msg);
-  void _GetLocationMsg(Teseo::eMsg msg);
-  void _TeseoLocProcessNmeaStream(void);
+  void _GetPSTMsg(Teseo::ePSTMsg msg, uint8_t *buffer);
+  void _GetLocationMsg(Teseo::eMsg msg, uint8_t *buffer);
   
   void _LocLed2Set(void){
     _loc_led2.write(1);
@@ -344,6 +348,9 @@ private:
   
   teseo_app_output_callback appOutCb;
   teseo_app_event_callback appEventCb;
+  
+  MemoryPool<struct _teseoMsg, TESEO_RXQUEUE_LEN> mpool;
+  Queue<struct _teseoMsg, TESEO_RXQUEUE_LEN> queue;
 };
 
 #endif /*__TESEO_H__*/
