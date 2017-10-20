@@ -79,7 +79,7 @@
 /**
  * @brief Constant that indicates the maximum number of proprietary nmea messages to be processed.
  */
-#define PSTM_NMEA_MSGS_NUM 1 //Note: update this constant coherently to ePSTMsg enum type
+#define PSTM_NMEA_MSGS_NUM 2 //Note: update this constant coherently to ePSTMsg enum type
 
 /**
  * @brief Constant that indicates the maximum number of positions that can be stored.
@@ -113,7 +113,7 @@ typedef enum {
 typedef enum {
     TESEO_LOC_STATE_IDLE,
     TESEO_LOC_STATE_RUN,
-    TESEO_LOC_STATE_GEOFENCE,
+    TESEO_LOC_STATE_FEATURE,
     TESEO_LOC_STATE_DEBUG
 } eTeseoLocState;
 
@@ -138,6 +138,7 @@ typedef struct TeseoData {
   GSV_Infos   gsv_data;   /**< $--GSV Data holder */
   
   Geofence_Infos   geofence_data;   /**< Geofence Data holder */
+  Odometer_Infos   odo_data;   /**< Odometer Data holder */
 } tTeseoData;
 
 /** Application register this out callback function and Teseo class will pass outputted information to application */
@@ -170,7 +171,8 @@ public:
   
   /** NMEA proprietary messages types */
   typedef enum {
-    PSTMGEOFENCE
+    PSTMGEOFENCE,
+    PSTMODO
   } ePSTMsg;
 
 private:
@@ -297,10 +299,10 @@ private:
 
   /** Geofencing */
   virtual bool isGeofencingSupported(void);
+  virtual gps_provider_error_t enableGeofence(void);
   virtual gps_provider_error_t configGeofences(GPSGeofence *geofences[], unsigned geofenceCount);
   virtual gps_provider_error_t geofenceReq(void);
-  void enableGeofence(void);
-  void cfgGeofenceCircle(void);
+  gps_provider_error_t cfgGeofenceCircle(void);
 
   /** Datalogging */
   virtual gps_provider_error_t configLog(GPSDatalog *datalog);
@@ -311,7 +313,9 @@ private:
   virtual gps_provider_error_t logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery);
   
   /* Odometer */
-  virtual gps_provider_error_t startOdo(void);
+  virtual bool isOdometerSupported(void);
+  virtual gps_provider_error_t enableOdo(void);
+  virtual gps_provider_error_t startOdo(unsigned alarmDistance);
   virtual gps_provider_error_t stopOdo(void);
   virtual gps_provider_error_t resetOdo(void);
 

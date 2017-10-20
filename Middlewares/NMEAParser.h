@@ -95,7 +95,13 @@ extern "C" {
 /**
  * @}
  */  
-  
+
+#define GNSS_FEATURE_EN_MSG 0
+#define GNSS_FEATURE_CFG_MSG 1
+#define GNSS_FEATURE_STATUS_MSG 2
+
+#define MAX_GEOFENCES_NUM 8
+
 /** @addtogroup NMEA_PARSER_TYPES_DEFINITIONS
  * @{
  */  
@@ -250,9 +256,6 @@ typedef struct GSV_Infos {
   int checksum;                         /**< Checksum of the message bytes */
 } GSV_Infos;
 
-#define GEOFENCECFGMSG 0
-#define GEOFENCESTATUSMSG 1
-#define MAX_GEOFENCES_NUM 8
 static char *geofenceCirclePosition[] = {
   "Unknown",
   "Outside",
@@ -275,11 +278,19 @@ typedef struct Timestamp_Info {
  * @brief Data structure that contains all of the informations about Geofence 
  */
 typedef struct Geofence_Infos {
-  uint8_t op;          /**< Geofence message (configuration/status) */
+  uint8_t op;          /**< Geofence type message (configuration/status) */
   uint8_t result;      /**< Geofence cfg/request result (OK/ERROR) */
   Timestamp_Info timestamp;
   int status[MAX_GEOFENCES_NUM];
 } Geofence_Infos;
+
+/**
+ * @brief Data structure that contains all of the informations about Ododmeter 
+ */
+typedef struct Odometer_Infos {
+  uint8_t op;          /**< Odometer type message (configuration/status) */
+  uint8_t result;      /**< Odometer cfg/request result (OK/ERROR) */
+} Odometer_Infos;
 
 /**
  * @}
@@ -297,6 +308,7 @@ ParseStatus_Typedef parse_gsvmsg (GSV_Infos   *gsv_data,   uint8_t *NMEA);
 void                copy_data    (GPGGA_Infos *, GPGGA_Infos);
 
 ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *NMEA);
+ParseStatus_Typedef parse_pstmodo(Odometer_Infos *odo_data, uint8_t *NMEA);
 /**
  * @}
  */

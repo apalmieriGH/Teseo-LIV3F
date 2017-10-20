@@ -510,7 +510,9 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
 
-      if ((strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) ||
+      if ((strcmp((char *)app[0], "$PSTMCFGGEOFENCEOK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMCFGGEOFENCEERROR") == 0) ||
+          (strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCEREQERROR") == 0)) {
@@ -528,17 +530,27 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
   }
   
   if (valid_msg == 1) {
-    
+    /* Enabling */
+    if (strcmp((char *)app[0], "$PSTMCFGGEOFENCEOK") == 0) {
+      geofence_data->op = GNSS_FEATURE_EN_MSG;
+      geofence_data->result = 0;
+    }
+    if (strcmp((char *)app[0], "$PSTMCFGGEOFENCEERROR") == 0) {
+      geofence_data->op = GNSS_FEATURE_EN_MSG;
+      geofence_data->result = 1;
+    }
+    /* Configuring */
     if (strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) {
-      geofence_data->op = GEOFENCECFGMSG;
+      geofence_data->op = GNSS_FEATURE_CFG_MSG;
       geofence_data->result = 0;
     }
     if (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) {
-      geofence_data->op = GEOFENCECFGMSG;
+      geofence_data->op = GNSS_FEATURE_CFG_MSG;
       geofence_data->result = 1;
     }
+    /* Querying Status */
     if (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) {
-      geofence_data->op = GEOFENCESTATUSMSG;
+      geofence_data->op = GNSS_FEATURE_STATUS_MSG;
       geofence_data->result = 0;
       sscanf((char *)app[1], "%02d%02d%02d", &geofence_data->timestamp.hh,&geofence_data->timestamp.mm,&geofence_data->timestamp.ss);
       sscanf((char *)app[2], "%04d%02d%02d", &geofence_data->timestamp.year,&geofence_data->timestamp.month,&geofence_data->timestamp.day);
@@ -547,10 +559,84 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
       }
     }
     if (strcmp((char *)app[0], "$PSTMGEOFENCEREQERROR") == 0) {
-      geofence_data->op = GEOFENCESTATUSMSG;
+      geofence_data->op = GNSS_FEATURE_STATUS_MSG;
       geofence_data->result = 1;
     }
     
+    valid_msg = 0;
+    status = PARSE_SUCC;
+  }
+  return status;
+}
+
+/**
+ * @brief  
+ * @param  Odometer_Infos Pointer to a Odometer_Infos struct
+ * @param  NMEA           NMEA string read by the Gps expansion.
+ * @retval ParseStatus_Typedef PARSE_SUCC if the parsing process goes ok, PARSE_FAIL if it doesn't
+ */
+ParseStatus_Typedef parse_pstmodo(Odometer_Infos *odo_data, uint8_t *NMEA)
+{
+  uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
+  uint8_t valid_msg = 0;
+  
+  ParseStatus_Typedef status = PARSE_FAIL;
+
+  if(NMEA == NULL)
+    return status;
+
+  /* clear the app[][] buffer */ 
+  for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
+    memset(app[i], 0, MAX_MSG_LEN);
+  }
+ 
+  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  {  
+    if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
+      app[j][k] = '\0';
+
+      if ((strcmp((char *)app[0], "$PSTMCFGODOOK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMCFGODOERROR") == 0) ||
+          (strcmp((char *)app[0], "$PSTMODOSTARTOK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMODOSTARTERROR") == 0) ||
+          (strcmp((char *)app[0], "$PSTMODOSTOPOK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMODOSTOPERROR") == 0)) {
+        j++;
+        k = 0;
+        valid_msg = 1;
+        continue;
+      }
+      else {
+        while(NMEA[i++] != '\n');
+        j = k = 0;
+      }
+    }
+    app[j][k++] = NMEA[i];
+  }
+  
+  if (valid_msg == 1) {
+    /* Enabling */
+    if (strcmp((char *)app[0], "$PSTMCFGODOOK") == 0) {
+      odo_data->op = GNSS_FEATURE_EN_MSG;
+      odo_data->result = 0;
+    }
+    if (strcmp((char *)app[0], "$PSTMCFGODOERROR") == 0) {
+      odo_data->op = GNSS_FEATURE_EN_MSG;
+      odo_data->result = 1;
+    }
+    
+    /* Start/Stop */
+    if ((strcmp((char *)app[0], "$PSTMODOSTARTOK") == 0) ||
+        (strcmp((char *)app[0], "$PSTMODOSTOPOK") == 0)) {
+      odo_data->op = GNSS_FEATURE_CFG_MSG;
+      odo_data->result = 0;
+    }
+    if ((strcmp((char *)app[0], "$PSTMODOSTARTERROR") == 0) ||
+       (strcmp((char *)app[0], "$PSTMODOSTOPERROR") == 0)) {
+      odo_data->op = GNSS_FEATURE_CFG_MSG;
+      odo_data->result = 1;
+    }
+
     valid_msg = 0;
     status = PARSE_SUCC;
   }

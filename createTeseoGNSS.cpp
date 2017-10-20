@@ -433,7 +433,7 @@ GetGSVMsgInfos(tTeseoData *pData)
 }
 
 /** 
- * @brief  This function prints on the console the info about GNSS satellites got by the most recent reception process
+ * @brief  This function prints on the console the info Geofence
  * @param  pData
  * @retval None
  */
@@ -443,13 +443,18 @@ GetGeofenceInfos(tTeseoData *pData)
   char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
-  
-  if(pData->geofence_data.op == GEOFENCECFGMSG) {
+
+  if(pData->geofence_data.op == GNSS_FEATURE_EN_MSG) {
+    sprintf(msg, "Geofence Enabling:\t\t[ %s ]\t",
+            pData->geofence_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->geofence_data.op == GNSS_FEATURE_CFG_MSG) {
     sprintf(msg, "Geofence Configuration:\t\t[ %s ]\t",
           pData->geofence_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
   }
-  if(pData->geofence_data.op == GEOFENCESTATUSMSG) {
+  if(pData->geofence_data.op == GNSS_FEATURE_STATUS_MSG) {
     sprintf(msg, "Geofence Status:\t\t[ %s ]\t",
           pData->geofence_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
@@ -470,6 +475,32 @@ GetGeofenceInfos(tTeseoData *pData)
         TESEO_APP_LOG_INFO(msg);
       }
     }
+  }  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+}
+
+/** 
+ * @brief  This function prints on the console the info about Odometer
+ * @param  pData
+ * @retval None
+ */
+static void
+GetOdometerInfos(tTeseoData *pData)
+{
+  char msg[256];
+  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+  if(pData->odo_data.op == GNSS_FEATURE_EN_MSG) {
+    sprintf(msg, "Odometer Enabling:\t\t[ %s ]\t",
+            pData->odo_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->odo_data.op == GNSS_FEATURE_CFG_MSG) {
+    sprintf(msg, "Odometer Configuration:\t\t[ %s ]\t",
+          pData->odo_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
   }  
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -524,6 +555,10 @@ _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
     case Teseo::PSTMGEOFENCE:
       // GET Geofence info
       GetGeofenceInfos(pData);
+      break;
+    case Teseo::PSTMODO:
+      // GET Geofence info
+      GetOdometerInfos(pData);
       break;
     default:
       break;
