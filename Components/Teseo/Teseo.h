@@ -79,7 +79,7 @@
 /**
  * @brief Constant that indicates the maximum number of proprietary nmea messages to be processed.
  */
-#define PSTM_NMEA_MSGS_NUM 2 //Note: update this constant coherently to ePSTMsg enum type
+#define PSTM_NMEA_MSGS_NUM 4 //Note: update this constant coherently to ePSTMsg enum type
 
 /**
  * @brief Constant that indicates the maximum number of positions that can be stored.
@@ -137,8 +137,12 @@ typedef struct TeseoData {
   GSA_Infos   gsa_data;   /**< $--GSA Data holder */
   GSV_Infos   gsv_data;   /**< $--GSV Data holder */
   
-  Geofence_Infos   geofence_data;   /**< Geofence Data holder */
-  Odometer_Infos   odo_data;   /**< Odometer Data holder */
+  Geofence_Infos geofence_data; /**< Geofence Data holder */
+  Odometer_Infos odo_data;      /**< Odometer Data holder */
+  Datalog_Infos datalog_data;   /**< Datalog Data holder */
+  
+  MsgList_Infos msgl_data;      /**< Message List cfg status */
+
 } tTeseoData;
 
 /** Application register this out callback function and Teseo class will pass outputted information to application */
@@ -172,7 +176,9 @@ public:
   /** NMEA proprietary messages types */
   typedef enum {
     PSTMGEOFENCE,
-    PSTMODO
+    PSTMODO,
+    PSTMDATALOG,
+    PSTMSGL
   } ePSTMsg;
 
 private:
@@ -292,7 +298,7 @@ private:
   virtual void reset(void);
   virtual const GPSProvider::LocationUpdateParams_t *getLastLocation(void) const;
 
-  void cfgMessageList(void);
+  gps_provider_error_t cfgMessageList(void);
   
   /** For verbose NMEA stream */
   virtual void setVerboseMode(int level);
@@ -305,10 +311,12 @@ private:
   gps_provider_error_t cfgGeofenceCircle(void);
 
   /** Datalogging */
-  virtual gps_provider_error_t configLog(GPSDatalog *datalog);
-  virtual gps_provider_error_t startLog(void);
-  virtual gps_provider_error_t stopLog(void);
-  virtual gps_provider_error_t eraseLog(void);
+  virtual bool isDataloggingSupported(void);
+  virtual gps_provider_error_t enableDatalog(void);
+  virtual gps_provider_error_t configDatalog(GPSDatalog *datalog);
+  virtual gps_provider_error_t startDatalog(void);
+  virtual gps_provider_error_t stopDatalog(void);
+  virtual gps_provider_error_t eraseDatalog(void);
   virtual gps_provider_error_t logReqStatus(void);
   virtual gps_provider_error_t logReqQuery(GPSProvider::LogQueryParams_t &logReqQuery);
   

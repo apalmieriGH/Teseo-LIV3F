@@ -96,15 +96,26 @@ extern "C" {
  * @}
  */  
 
-#define GNSS_FEATURE_EN_MSG 0
-#define GNSS_FEATURE_CFG_MSG 1
-#define GNSS_FEATURE_STATUS_MSG 2
-
 #define MAX_GEOFENCES_NUM 8
 
 /** @addtogroup NMEA_PARSER_TYPES_DEFINITIONS
  * @{
- */  
+ */
+/**
+ * @brief Enumeration structure that containes the types of feature messages
+ */
+typedef enum {
+  GNSS_FEATURE_EN_MSG  = 0,
+  GNSS_GEOFENCE_CFG_MSG,
+  GNSS_GEOFENCE_STATUS_MSG,
+  GNSS_ODO_START_MSG,
+  GNSS_ODO_STOP_MSG,
+  GNSS_DATALOG_CFG_MSG,
+  GNSS_DATALOG_START_MSG,
+  GNSS_DATALOG_STOP_MSG,
+  GNSS_DATALOG_ERASE_MSG
+} ParseFeatureMsg_Typedef;
+
 /**
  * @brief Enumeration structure that containes the two success states of a parsing process
  */
@@ -275,7 +286,7 @@ typedef struct Timestamp_Info {
 } Timestamp_Info;
 
 /**
- * @brief Data structure that contains all of the informations about Geofence 
+ * @brief Data structure that contains all of the information about Geofence 
  */
 typedef struct Geofence_Infos {
   uint8_t op;          /**< Geofence type message (configuration/status) */
@@ -285,12 +296,27 @@ typedef struct Geofence_Infos {
 } Geofence_Infos;
 
 /**
- * @brief Data structure that contains all of the informations about Ododmeter 
+ * @brief Data structure that contains all of the information about Ododmeter 
  */
 typedef struct Odometer_Infos {
   uint8_t op;          /**< Odometer type message (configuration/status) */
   uint8_t result;      /**< Odometer cfg/request result (OK/ERROR) */
 } Odometer_Infos;
+
+/**
+ * @brief Data structure that contains all of the information about Datalog 
+ */
+typedef struct Datalog_Infos {
+  uint8_t op;          /**< Datalog type message (configuration/status) */
+  uint8_t result;      /**< Datalog cfg/request result (OK/ERROR) */
+} Datalog_Infos;
+
+/**
+ * @brief Data structure that contains result about MessageList configuration
+ */
+typedef struct MsgList_Infos {
+  uint8_t result;      /**< Message List cfg result (OK/ERROR) */
+} MsgList_Infos;
 
 /**
  * @}
@@ -309,6 +335,8 @@ void                copy_data    (GPGGA_Infos *, GPGGA_Infos);
 
 ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *NMEA);
 ParseStatus_Typedef parse_pstmodo(Odometer_Infos *odo_data, uint8_t *NMEA);
+ParseStatus_Typedef parse_pstmdatalog(Datalog_Infos *datalog_data, uint8_t *NMEA);
+ParseStatus_Typedef parse_pstmsgl(MsgList_Infos *msgl_data, uint8_t *NMEA);
 /**
  * @}
  */

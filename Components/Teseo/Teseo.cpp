@@ -419,18 +419,28 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
       /* Geofence enabling */
       if(pData->geofence_data.op == GNSS_FEATURE_EN_MSG) {
         code = pData->geofence_data.result ?
-          GPS_ERROR_GEOFENCE_EN_FAILED : GPS_ERROR_GEOFENCE_EN_SUCCESS;
+          GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
           
-        if (code == GPS_ERROR_GEOFENCE_EN_SUCCESS) {
-          reset();
+        if (code == GPS_ERROR_NONE) {
+          //FIXME!!!
+          //reset();
+          
+          cfgMessageList();
+          return;
         }
-          //FIXME: if (geofenceCfgMessageCallback) {
-          //geofenceCfgMessageCallback(code);
-        //}
+      }
+
+      /* Geofence configuration */
+      if(pData->geofence_data.op == GNSS_GEOFENCE_CFG_MSG) {
+        code = pData->geofence_data.result ?
+          GPS_ERROR_GEOFENCE_CFG : GPS_ERROR_NONE;
+        if (geofenceCfgMessageCallback) {
+          geofenceCfgMessageCallback(code);
+        }
       }
 
       /* Geofence Status */
-      if(pData->geofence_data.op == GNSS_FEATURE_STATUS_MSG) {
+      if(pData->geofence_data.op == GNSS_GEOFENCE_STATUS_MSG) {
         geofenceStatus.timestamp.hh = pData->geofence_data.timestamp.hh;
         geofenceStatus.timestamp.mm = pData->geofence_data.timestamp.mm;
         geofenceStatus.timestamp.ss = pData->geofence_data.timestamp.ss;
@@ -440,21 +450,13 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
         geofenceStatus.currentStatus = pData->geofence_data.status;
         geofenceStatus.numGeofences = MAX_GEOFENCES_NUM;
         code = pData->geofence_data.result ?
-          GPS_ERROR_GEOFENCES_STATUS_FAILED : GPS_ERROR_GEOFENCES_STATUS_SUCCESS;
+          GPS_ERROR_GEOFENCE_STATUS : GPS_ERROR_NONE;
 
         if (geofenceStatusMessageCallback) {
           geofenceStatusMessageCallback(&geofenceStatus, code);
         }
       }
-      
-      /* Geofence configuration */
-      if(pData->geofence_data.op == GNSS_FEATURE_CFG_MSG) {
-        code = pData->geofence_data.result ?
-          GPS_ERROR_GEOFENCES_CFG_FAILED : GPS_ERROR_GEOFENCES_CFG_SUCCESS;
-        if (geofenceCfgMessageCallback) {
-          geofenceCfgMessageCallback(code);
-        }
-      }
+
     }
     break;
 
@@ -463,21 +465,71 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
       if(pData->odo_data.op == GNSS_FEATURE_EN_MSG) {
         
         code = pData->odo_data.result ?
-          GPS_ERROR_GEOFENCE_EN_FAILED : GPS_ERROR_GEOFENCE_EN_SUCCESS;
+          GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
 
-        if (code == GPS_ERROR_GEOFENCE_EN_SUCCESS) {
+        if (code == GPS_ERROR_NONE) {
           reset();
         }
       }
 
-      /* Odometer configuration */
-      if(pData->odo_data.op == GNSS_FEATURE_CFG_MSG) {
+      /* Odometer start */
+      if(pData->odo_data.op == GNSS_ODO_START_MSG) {
         code = pData->odo_data.result ?
-          GPS_ERROR_GEOFENCES_CFG_FAILED : GPS_ERROR_GEOFENCES_CFG_SUCCESS;
+          GPS_ERROR_ODO_START : GPS_ERROR_NONE;
       }
-
+      /* Odometer stop */
+      if(pData->odo_data.op == GNSS_ODO_STOP_MSG) {
+        code = pData->odo_data.result ?
+          GPS_ERROR_ODO_STOP : GPS_ERROR_NONE;
+      }
     }
     break;
+    
+    case PSTMDATALOG: {
+      /* Datalog enabling */
+      if(pData->datalog_data.op == GNSS_FEATURE_EN_MSG) {
+        
+        code = pData->datalog_data.result ?
+          GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
+
+        if (code == GPS_ERROR_NONE) {
+          reset();
+        }
+      }
+      /* Datalog create */
+      if(pData->datalog_data.op == GNSS_DATALOG_CFG_MSG) {
+        code = pData->datalog_data.result ?
+          GPS_ERROR_DATALOG_CFG : GPS_ERROR_NONE;
+      }
+      /* Datalog start */
+      if(pData->datalog_data.op == GNSS_DATALOG_START_MSG) {
+        code = pData->datalog_data.result ?
+          GPS_ERROR_DATALOG_START : GPS_ERROR_NONE;
+      }
+      /* Datalog stop */
+      if(pData->datalog_data.op == GNSS_DATALOG_STOP_MSG) {
+        code = pData->datalog_data.result ?
+          GPS_ERROR_DATALOG_STOP : GPS_ERROR_NONE;
+      }
+      /* Datalog erase */
+      if(pData->datalog_data.op == GNSS_DATALOG_ERASE_MSG) {
+        code = pData->datalog_data.result ?
+          GPS_ERROR_DATALOG_ERASE : GPS_ERROR_NONE;
+      }
+    }
+    break;
+
+    case PSTMSGL: {
+      /* Msg List cfg */
+      code = pData->odo_data.result ?
+          GPS_ERROR_MSGLIST_CFG : GPS_ERROR_NONE;
+
+      if (code == GPS_ERROR_NONE) {
+        reset();
+      }
+    }
+    break;
+    
   } /* end switch */
   } /* end case LOC_OUTPUT_PSTM */
 
@@ -606,6 +658,18 @@ Teseo::_GetPSTMsg(Teseo::ePSTMsg msg, uint8_t *buffer)
       outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
     }
     break;
+  case PSTMDATALOG:
+    status = (eStatus)parse_pstmdatalog(&pData.datalog_data, buffer);
+    if(status == TESEO_STATUS_SUCCESS) {
+      outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
+    }
+    break;
+  case PSTMSGL:
+    status = (eStatus)parse_pstmsgl(&pData.msgl_data, buffer);
+    if(status == TESEO_STATUS_SUCCESS) {
+      outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
+    }
+    break;
 
   default:
     break;
@@ -671,21 +735,26 @@ Teseo::reset(void)
   _ResetFast(_serialDebug);
 }
 
-void
+gps_provider_error_t
 Teseo::cfgMessageList(void)
-{  
+{
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+#if 0
   sprintf(_teseoCmd, "$PSTMCFGMSGL,%d,%d,%x,%x",
           0, /*NMEA 0*/
           1, /*Rate*/
           0,
           0/*x80000*/);
+#endif
+  sprintf(_teseoCmd, "$PSTMCFGMSGL,0,1,0,0");
   SendCommand(_teseoCmd);
   
   sprintf(_teseoCmd, "$PSTMSAVEPAR");
   SendCommand(_teseoCmd);
   
-  reset();
-  
+  return GPS_ERROR_NONE;  
 }
 
 bool
@@ -697,13 +766,17 @@ Teseo::isGeofencingSupported(void)
 gps_provider_error_t
 Teseo::enableGeofence(void)
 {
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
   //$PSTMCFGGEOFENCE,<en>,<tol>*<checksum><cr><lf>
   sprintf(_teseoCmd, "$PSTMCFGGEOFENCE,%d,%d",1,1);
   SendCommand(_teseoCmd);
 
   sprintf(_teseoCmd, "$PSTMSAVEPAR");
   SendCommand(_teseoCmd);
-  
+ 
   return GPS_ERROR_NONE;
 }
 
@@ -750,7 +823,7 @@ Teseo::configGeofences(GPSGeofence *geofences[], unsigned geofenceCount)
   _locStateMutex.unlock();
      
   if(geofenceCount > MAX_GEOFENCES_NUM) {
-    return GPS_ERROR_GEOFENCES_MAX_EXCEEDED;
+    return GPS_ERROR_GEOFENCE_MAX_EXCEEDED;
   }
   
   for(uint8_t i = 0; i < geofenceCount; i++) {
@@ -805,31 +878,94 @@ Teseo::geofenceReq(void)
   return GPS_ERROR_NONE;
 }
 
-gps_provider_error_t
-Teseo::configLog(GPSDatalog *datalog)
+bool
+Teseo::isDataloggingSupported(void)
 {
-  /* TBI */
+  return true;
+}
+
+gps_provider_error_t
+Teseo::enableDatalog(void)
+{
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
+  //$PSTMCFGLOG,<en>,<circ>,<rectype>,<oneshot>,<rate>,<speed>,<dist>*<checksum><cr><lf>
+  sprintf(_teseoCmd, "$PSTMCFGLOG,%d,%d,%d,%d,%u,%u,%u",
+          1, //Enable/Disable the log
+          1, //Enable/Disable circular mode
+          1, //Record type
+          0, //Enable/Disable one shot mode
+          5, //time interval in seconds between two consecutive logged records
+          0, //minimum speed threshold
+          0  //distance threshold
+          );
+  SendCommand(_teseoCmd);
+  
+  sprintf(_teseoCmd, "$PSTMSAVEPAR");
+  SendCommand(_teseoCmd);
+
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
-Teseo::startLog(void)
+Teseo::configDatalog(GPSDatalog *datalog)
 {
-  /* TBI */
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
+  //printf("Teseo::configDatalog 0x%03x\r\n", (datalog->getEnableBufferFullAlarm())<<1|(datalog->getEnableCircularBuffer()));
+  //$PSTMLOGCREATE,<cfg>,<min-rate>,<min-speed>,<min-position>,<logmask>*<checksum><cr><lf>
+  sprintf(_teseoCmd, "$PSTMLOGCREATE,%03x,%u,%u,%u,%d",
+          (datalog->getEnableBufferFullAlarm())<<1|(datalog->getEnableCircularBuffer()),
+          datalog->getMinRate(),
+          datalog->getMinSpeed(),
+          datalog->getMinPosition(),
+          datalog->getLogMask()
+          );
+  SendCommand(_teseoCmd);
+
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
-Teseo::stopLog(void)
+Teseo::startDatalog(void)
 {
-  /* TBI */
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
+  sprintf(_teseoCmd, "$PSTMLOGSTART");
+  SendCommand(_teseoCmd);
+
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
-Teseo::eraseLog(void)
+Teseo::stopDatalog(void)
 {
-  /* TBI */
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
+  sprintf(_teseoCmd, "$PSTMLOGSTOP");
+  SendCommand(_teseoCmd);
+
+  return GPS_ERROR_NONE;
+}
+
+gps_provider_error_t
+Teseo::eraseDatalog(void)
+{
+  _locStateMutex.lock();
+  _locState = TESEO_LOC_STATE_FEATURE;
+  _locStateMutex.unlock();
+
+  sprintf(_teseoCmd, "$PSTMLOGERASE");
+  SendCommand(_teseoCmd);
+
   return GPS_ERROR_NONE;
 }
 

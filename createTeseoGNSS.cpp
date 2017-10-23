@@ -449,12 +449,12 @@ GetGeofenceInfos(tTeseoData *pData)
             pData->geofence_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
   }
-  if(pData->geofence_data.op == GNSS_FEATURE_CFG_MSG) {
+  if(pData->geofence_data.op == GNSS_GEOFENCE_CFG_MSG) {
     sprintf(msg, "Geofence Configuration:\t\t[ %s ]\t",
           pData->geofence_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
   }
-  if(pData->geofence_data.op == GNSS_FEATURE_STATUS_MSG) {
+  if(pData->geofence_data.op == GNSS_GEOFENCE_STATUS_MSG) {
     sprintf(msg, "Geofence Status:\t\t[ %s ]\t",
           pData->geofence_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
@@ -497,13 +497,74 @@ GetOdometerInfos(tTeseoData *pData)
             pData->odo_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
   }
-  if(pData->odo_data.op == GNSS_FEATURE_CFG_MSG) {
-    sprintf(msg, "Odometer Configuration:\t\t[ %s ]\t",
+  if((pData->odo_data.op == GNSS_ODO_START_MSG) ||
+     (pData->odo_data.op == GNSS_ODO_STOP_MSG)) {
+    sprintf(msg, "Odometer Operation:\t\t[ %s ]\t",
           pData->odo_data.result ? "ERROR" : "OK");
     TESEO_APP_LOG_INFO(msg);
   }  
   TESEO_APP_LOG_INFO("\r\n");
   
+}
+
+/** 
+ * @brief  This function prints on the console the info about Datalog
+ * @param  pData
+ * @retval None
+ */
+static void
+GetDatalogInfos(tTeseoData *pData)
+{
+  char msg[256];
+  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+  if(pData->datalog_data.op == GNSS_FEATURE_EN_MSG) {
+    sprintf(msg, "Datalog Enabling:\t\t[ %s ]\t",
+            pData->datalog_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->datalog_data.op == GNSS_DATALOG_CFG_MSG) {
+    sprintf(msg, "Datalog Configuring:\t\t[ %s ]\t",
+            pData->datalog_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->datalog_data.op == GNSS_DATALOG_START_MSG) {
+    sprintf(msg, "Datalog Start:\t\t[ %s ]\t",
+            pData->datalog_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->datalog_data.op == GNSS_DATALOG_STOP_MSG) {
+    sprintf(msg, "Datalog Stop:\t\t[ %s ]\t",
+            pData->datalog_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  if(pData->datalog_data.op == GNSS_DATALOG_ERASE_MSG) {
+    sprintf(msg, "Datalog Erase:\t\t[ %s ]\t",
+            pData->datalog_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+  }
+  TESEO_APP_LOG_INFO("\r\n");
+  
+}
+
+/** 
+ * @brief  This function prints on the console the info about Message List
+ * @param  pData
+ * @retval None
+ */
+static void
+GetMsglInfos(tTeseoData *pData)
+{
+  char msg[256];
+  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+  sprintf(msg, "Msg List config:\t\t[ %s ]\t",
+          pData->msgl_data.result ? "ERROR" : "OK");
+  TESEO_APP_LOG_INFO(msg);
+    
+  TESEO_APP_LOG_INFO("\r\n");
 }
 
 void
@@ -559,6 +620,14 @@ _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
     case Teseo::PSTMODO:
       // GET Geofence info
       GetOdometerInfos(pData);
+      break;
+    case Teseo::PSTMDATALOG:
+      // GET Datalog info
+      GetDatalogInfos(pData);
+      break;
+    case Teseo::PSTMSGL:
+      // GET Message List info
+      GetMsglInfos(pData);
       break;
     default:
       break;
