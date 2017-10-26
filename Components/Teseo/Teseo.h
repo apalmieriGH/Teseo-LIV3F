@@ -79,7 +79,7 @@
 /**
  * @brief Constant that indicates the maximum number of proprietary nmea messages to be processed.
  */
-#define PSTM_NMEA_MSGS_NUM 4 //Note: update this constant coherently to ePSTMsg enum type
+#define PSTM_NMEA_MSGS_NUM 5 //Note: update this constant coherently to ePSTMsg enum type
 
 /**
  * @brief Constant that indicates the maximum number of positions that can be stored.
@@ -90,7 +90,7 @@
  * @brief Constant that indicates the lenght of the buffer that stores the GPS data read by the GPS expansion.
  */
 
-#define TESEO_RXBUF_LEN		90
+#define TESEO_RXBUF_LEN		256//90
 #define TESEO_RXQUEUE_LEN	8
 
 /**
@@ -141,7 +141,7 @@ typedef struct TeseoData {
   Odometer_Infos odo_data;      /**< Odometer Data holder */
   Datalog_Infos datalog_data;   /**< Datalog Data holder */
   
-  MsgList_Infos msgl_data;      /**< Message List cfg status */
+  Ack_Info ack;                 /**<  */
 
 } tTeseoData;
 
@@ -178,12 +178,12 @@ public:
     PSTMGEOFENCE,
     PSTMODO,
     PSTMDATALOG,
-    PSTMSGL
+    PSTMSGL,
+    PSTMSAVEPAR
   } ePSTMsg;
 
 private:
 
-  Mutex          _locStateMutex;
   eTeseoLocState _locState;
     
   DigitalOut    _loc_led2;
@@ -298,9 +298,10 @@ private:
   virtual void reset(void);
   virtual const GPSProvider::LocationUpdateParams_t *getLastLocation(void) const;
 
-  gps_provider_error_t cfgMessageList(void);
+  gps_provider_error_t cfgMessageList(int level);
+  gps_provider_error_t saveConfigParams(void);
   
-  /** For verbose NMEA stream */
+  /** Set NMEA stream verbosity */
   virtual void setVerboseMode(int level);
 
   /** Geofencing */

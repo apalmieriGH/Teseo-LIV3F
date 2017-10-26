@@ -285,11 +285,9 @@ Teseo::ReadSentence(Teseo::eMsg msg)
     osEvent evt = queue.get();
     if (evt.status == osEventMessage) {
       struct _teseoMsg *message = (struct _teseoMsg *)evt.value.p;
-      if (message->len <= 0) {
-        return;
+      if (message->len > 0) {
+        status = _GetMsg(msg, message->buf);
       }
-      
-      status = _GetMsg(msg, message->buf);
       
       mpool.free(message);
     }
@@ -299,9 +297,13 @@ Teseo::ReadSentence(Teseo::eMsg msg)
 void
 Teseo::_InitUART(int br)
 {  
-  _uart = new Serial(_uartRx, _uartTx);
-  _uart->format(8, SerialBase::None, 1);
-  _uart->baud(br);
+  _uart = new (std::nothrow) Serial(_uartRx, _uartTx);
+  if(_uart != NULL) {
+    _uart->format(8, SerialBase::None, 1);
+    _uart->baud(br);
+  } else {
+    TESEO_LOG_INFO("Error allocating UART.\r\n");
+  }
 }
 
 bool
@@ -354,6 +356,7 @@ void
 Teseo::start(void)
 {
   if(_locState == TESEO_LOC_STATE_IDLE) {
+
     _InitUART();
     _locState = TESEO_LOC_STATE_RUN;
     
@@ -362,6 +365,8 @@ Teseo::start(void)
     if(serialStreamThread != NULL) {
       serialStreamThread->set_priority(osPriorityRealtime);
       serialStreamThread->start(_UARTStreamProcess, this);
+    } else {
+      TESEO_LOG_INFO("Error allocating serialStreamThread\r\n");
     }
 
     eventHandler(TESEO_LOC_EVENT_START_RESULT, 0);
@@ -382,6 +387,11 @@ Teseo::stop(void)
     delete serialStreamThread;
   }
   
+  if(_uart != NULL) {
+    delete _uart;
+    _uart = NULL;
+  }
+
   _locState = TESEO_LOC_STATE_IDLE;
   eventHandler(TESEO_LOC_EVENT_STOP_RESULT, 0);
 }
@@ -422,11 +432,7 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
           GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
           
         if (code == GPS_ERROR_NONE) {
-          //FIXME!!!
-          //reset();
-          
-          cfgMessageList();
-          return;
+          saveConfigParams();
         }
       }
 
@@ -468,7 +474,7 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
           GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
 
         if (code == GPS_ERROR_NONE) {
-          reset();
+          saveConfigParams();
         }
       }
 
@@ -493,7 +499,7 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
           GPS_ERROR_FEATURE_ENABLING : GPS_ERROR_NONE;
 
         if (code == GPS_ERROR_NONE) {
-          reset();
+          saveConfigParams();
         }
       }
       /* Datalog create */
@@ -521,8 +527,18 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
 
     case PSTMSGL: {
       /* Msg List cfg */
-      code = pData->odo_data.result ?
+      code = pData->ack ?
           GPS_ERROR_MSGLIST_CFG : GPS_ERROR_NONE;
+
+      if (code == GPS_ERROR_NONE) {
+        saveConfigParams();
+      }
+    }
+    break;
+    
+    case PSTMSAVEPAR: {
+      code = pData->ack ?
+          GPS_ERROR_SAVEPAR : GPS_ERROR_NONE;
 
       if (code == GPS_ERROR_NONE) {
         reset();
@@ -533,10 +549,6 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
   } /* end switch */
   } /* end case LOC_OUTPUT_PSTM */
 
-  /* Recover the normal state */
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_RUN;
-  _locStateMutex.unlock();
   break;
 
   default:
@@ -610,14 +622,7 @@ Teseo::_GetMsg(Teseo::eMsg msg, uint8_t *buffer)
 void
 Teseo::setVerboseMode(int level)
 {
-  _locStateMutex.lock();
-  if(level == 1) {
-    _locState = TESEO_LOC_STATE_RUN;
-  }
-  if(level == 2) {
-    _locState = TESEO_LOC_STATE_DEBUG;
-  }
-  _locStateMutex.unlock();  
+  cfgMessageList(level);
 }
 
 void
@@ -644,6 +649,14 @@ Teseo::_GetPSTMsg(Teseo::ePSTMsg msg, uint8_t *buffer)
 {
   eStatus status;
 
+#if 0
+  _serialDebug->printf("\n\r --------------------->\n\r");
+  for (int i = 0; i < TESEO_RXBUF_LEN ; ++i) {
+    _serialDebug->putc((int)buffer[i]);
+  }
+  _serialDebug->printf("\n\r<---------------------\n\r");
+#endif
+  
   switch(msg) {
 
   case PSTMGEOFENCE:
@@ -665,7 +678,13 @@ Teseo::_GetPSTMsg(Teseo::ePSTMsg msg, uint8_t *buffer)
     }
     break;
   case PSTMSGL:
-    status = (eStatus)parse_pstmsgl(&pData.msgl_data, buffer);
+    status = (eStatus)parse_pstmsgl(&pData.ack, buffer);
+    if(status == TESEO_STATUS_SUCCESS) {
+      outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
+    }
+    break;
+  case PSTMSAVEPAR:
+    status = (eStatus)parse_pstmsavepar(&pData.ack, buffer);
     if(status == TESEO_STATUS_SUCCESS) {
       outputHandler(LOC_OUTPUT_PSTM, msg, &pData);
     }
@@ -674,6 +693,7 @@ Teseo::_GetPSTMsg(Teseo::ePSTMsg msg, uint8_t *buffer)
   default:
     break;
   }
+  /* Recover the normal state */
 
 }
 
@@ -683,28 +703,15 @@ Teseo::process(void)
   osEvent evt = queue.get();
   if (evt.status == osEventMessage) {
     struct _teseoMsg *message = (struct _teseoMsg *)evt.value.p;
-    if (message->len <= 0) {
-      return;
-    }
+    if (message->len > 0) {
 
-    _locStateMutex.lock();
-    if(_locState == TESEO_LOC_STATE_FEATURE) {
       for(int m = 0; m < PSTM_NMEA_MSGS_NUM; m++) {
         _GetPSTMsg((ePSTMsg)m, message->buf);
       }
-      //_GetPSTMsg(PSTMGEOFENCE, message->buf);
-    }
-    
-    if(_locState == TESEO_LOC_STATE_RUN) {
-      _GetLocationMsg(GPGGA, message->buf);
-    }
-    
-    if(_locState == TESEO_LOC_STATE_DEBUG) {
       for(int m = 0; m < NMEA_MSGS_NUM; m++) {
         _GetMsg((eMsg)m, message->buf);
       }
     }
-    _locStateMutex.unlock();
 
     mpool.free(message);
   }
@@ -736,21 +743,29 @@ Teseo::reset(void)
 }
 
 gps_provider_error_t
-Teseo::cfgMessageList(void)
+Teseo::cfgMessageList(int level)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-#if 0
+  int lowMask = 0x2;
+  int highMask = 0x80000;
+
+  if(level == 2) {
+    lowMask = 0x18004F;
+  }
+
   sprintf(_teseoCmd, "$PSTMCFGMSGL,%d,%d,%x,%x",
           0, /*NMEA 0*/
           1, /*Rate*/
-          0,
-          0/*x80000*/);
-#endif
-  sprintf(_teseoCmd, "$PSTMCFGMSGL,0,1,0,0");
+          lowMask,
+          highMask);
+
   SendCommand(_teseoCmd);
   
+  return GPS_ERROR_NONE;  
+}
+
+gps_provider_error_t
+Teseo::saveConfigParams(void)
+{  
   sprintf(_teseoCmd, "$PSTMSAVEPAR");
   SendCommand(_teseoCmd);
   
@@ -766,20 +781,14 @@ Teseo::isGeofencingSupported(void)
 gps_provider_error_t
 Teseo::enableGeofence(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   //$PSTMCFGGEOFENCE,<en>,<tol>*<checksum><cr><lf>
   sprintf(_teseoCmd, "$PSTMCFGGEOFENCE,%d,%d",1,1);
   SendCommand(_teseoCmd);
 
-  sprintf(_teseoCmd, "$PSTMSAVEPAR");
-  SendCommand(_teseoCmd);
- 
   return GPS_ERROR_NONE;
 }
 
+//FIXME!
 gps_provider_error_t
 Teseo::cfgGeofenceCircle(void)
 {
@@ -803,8 +812,6 @@ Teseo::cfgGeofenceCircle(void)
   sprintf(_teseoCmd, "$PSTMSAVEPAR");
   SendCommand(_teseoCmd);
   
-  //reset();
-  
   return GPS_ERROR_NONE;
 }
 
@@ -813,14 +820,6 @@ gps_provider_error_t
 Teseo::configGeofences(GPSGeofence *geofences[], unsigned geofenceCount)
 {
   uint8_t trials;
-
-  //cfgGeofenceCircle();
-  //return GPS_ERROR_NONE;
-  //cfgMessageList();
-  
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
      
   if(geofenceCount > MAX_GEOFENCES_NUM) {
     return GPS_ERROR_GEOFENCE_MAX_EXCEEDED;
@@ -868,10 +867,6 @@ Teseo::configGeofences(GPSGeofence *geofences[], unsigned geofenceCount)
 gps_provider_error_t
 Teseo::geofenceReq(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMGEOFENCEREQ");
   SendCommand(_teseoCmd);
 
@@ -887,10 +882,6 @@ Teseo::isDataloggingSupported(void)
 gps_provider_error_t
 Teseo::enableDatalog(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   //$PSTMCFGLOG,<en>,<circ>,<rectype>,<oneshot>,<rate>,<speed>,<dist>*<checksum><cr><lf>
   sprintf(_teseoCmd, "$PSTMCFGLOG,%d,%d,%d,%d,%u,%u,%u",
           1, //Enable/Disable the log
@@ -903,19 +894,12 @@ Teseo::enableDatalog(void)
           );
   SendCommand(_teseoCmd);
   
-  sprintf(_teseoCmd, "$PSTMSAVEPAR");
-  SendCommand(_teseoCmd);
-
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
 Teseo::configDatalog(GPSDatalog *datalog)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   //printf("Teseo::configDatalog 0x%03x\r\n", (datalog->getEnableBufferFullAlarm())<<1|(datalog->getEnableCircularBuffer()));
   //$PSTMLOGCREATE,<cfg>,<min-rate>,<min-speed>,<min-position>,<logmask>*<checksum><cr><lf>
   sprintf(_teseoCmd, "$PSTMLOGCREATE,%03x,%u,%u,%u,%d",
@@ -933,10 +917,6 @@ Teseo::configDatalog(GPSDatalog *datalog)
 gps_provider_error_t
 Teseo::startDatalog(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMLOGSTART");
   SendCommand(_teseoCmd);
 
@@ -946,10 +926,6 @@ Teseo::startDatalog(void)
 gps_provider_error_t
 Teseo::stopDatalog(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMLOGSTOP");
   SendCommand(_teseoCmd);
 
@@ -959,10 +935,6 @@ Teseo::stopDatalog(void)
 gps_provider_error_t
 Teseo::eraseDatalog(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMLOGERASE");
   SendCommand(_teseoCmd);
 
@@ -992,27 +964,16 @@ Teseo::isOdometerSupported(void)
 gps_provider_error_t
 Teseo::enableOdo(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   //$PSTMCFGODO,<en>,<enmsg>,<alarm>*<checksum><cr><lf>
   sprintf(_teseoCmd, "$PSTMCFGODO,1,1,1");
   SendCommand(_teseoCmd);
   
-  sprintf(_teseoCmd, "$PSTMSAVEPAR");
-  SendCommand(_teseoCmd);
-
   return GPS_ERROR_NONE;
 }
 
 gps_provider_error_t
 Teseo::startOdo(unsigned alarmDistance)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMODOSTART,%08x", alarmDistance);
   SendCommand(_teseoCmd);
 
@@ -1022,10 +983,6 @@ Teseo::startOdo(unsigned alarmDistance)
 gps_provider_error_t
 Teseo::stopOdo(void)
 {
-  _locStateMutex.lock();
-  _locState = TESEO_LOC_STATE_FEATURE;
-  _locStateMutex.unlock();
-
   sprintf(_teseoCmd, "$PSTMODOSTOP");
   SendCommand(_teseoCmd);
 

@@ -112,10 +112,10 @@ ParseStatus_Typedef parse_gpgga(GPGGA_Infos *gpgga_data, uint8_t *NMEA)
     gpgga_data->valid = (GPS_ValidTypedef)valid;
     if (gpgga_data->valid == VALID) {
       scan_utc ((char *)app[1],  &gpgga_data->utc);
-      sscanf  ((char *)app[2],  "%lf", &gpgga_data->xyz.lat);
-      sscanf  ((char *)app[3],  "%c", &gpgga_data->xyz.ns);
-      sscanf  ((char *)app[4],  "%lf", &gpgga_data->xyz.lon);
-      sscanf  ((char *)app[5],  "%c", &gpgga_data->xyz.ew);
+      sscanf   ((char *)app[2],  "%lf", &gpgga_data->xyz.lat);
+      sscanf   ((char *)app[3],  "%c", &gpgga_data->xyz.ns);
+      sscanf   ((char *)app[4],  "%lf", &gpgga_data->xyz.lon);
+      sscanf   ((char *)app[5],  "%c", &gpgga_data->xyz.ew);
       sscanf   ((char *)app[7],  "%d", &gpgga_data->sats);
       sscanf   ((char *)app[8],  "%f", &gpgga_data->acc);
       sscanf   ((char *)app[9],  "%f", &gpgga_data->xyz.alt);
@@ -180,8 +180,11 @@ ParseStatus_Typedef parse_gnsmsg (GNS_Infos *gns_data, uint8_t *NMEA)
   
   if (valid_msg == 1) {    
     sscanf   ((char *)app[0],  "%s", gns_data->constellation);    
-    scan_utc ((char *)app[1],  &gns_data->utc);    
-    scan_xy  ((char *)app[2],  MAX_MSG_LEN, &gns_data->xyz);
+    scan_utc ((char *)app[1],  &gns_data->utc); 
+    sscanf   ((char *)app[2],  "%lf", &gns_data->xyz.lat);
+    sscanf   ((char *)app[3],  "%c", &gns_data->xyz.ns);
+    sscanf   ((char *)app[4],  "%lf", &gns_data->xyz.lon);
+    sscanf   ((char *)app[5],  "%c", &gns_data->xyz.ew);
     sscanf   ((char *)app[6],  "%c", &gns_data->gps_mode);
     sscanf   ((char *)app[7],  "%c", &gns_data->glonass_mode);    
     sscanf   ((char *)app[8],  "%d", &gns_data->sats);
@@ -301,8 +304,11 @@ ParseStatus_Typedef parse_gprmc (GPRMC_Infos *gprmc_data, uint8_t *NMEA)
 
   if (valid_msg == 1) {      
     scan_utc ((char *)app[1],  &gprmc_data->utc);
-    sscanf   ((char *)app[2],  "%c", &gprmc_data->status);    
-    scan_xy  ((char *)app[3],  MAX_MSG_LEN, &gprmc_data->xyz);
+    sscanf   ((char *)app[2],  "%c", &gprmc_data->status); 
+    sscanf   ((char *)app[3],  "%lf", &gprmc_data->xyz.lat);
+    sscanf   ((char *)app[4],  "%c", &gprmc_data->xyz.ns);
+    sscanf   ((char *)app[5],  "%lf", &gprmc_data->xyz.lon);
+    sscanf   ((char *)app[6],  "%c", &gprmc_data->xyz.ew);
     sscanf   ((char *)app[7],  "%f", &gprmc_data->speed);
     sscanf   ((char *)app[8],  "%f", &gprmc_data->trackgood);
     sscanf   ((char *)app[9],  "%d", &gprmc_data->date);
@@ -515,6 +521,7 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
           (strcmp((char *)app[0], "$PSTMGEOFENCECFGOK") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCECFGERROR") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCESTATUS") == 0) ||
+          (strcmp((char *)app[0], "$PSTMGEOFENCE") == 0) ||
           (strcmp((char *)app[0], "$PSTMGEOFENCEREQERROR") == 0)) {
         j++;
         k = 0;
@@ -558,6 +565,15 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
         sscanf((char *)app[3+i], "%d", &geofence_data->status[i]);
       }
     }
+    /* Alarm Msg */
+    if (strcmp((char *)app[0], "$PSTMGEOFENCE") == 0) {
+      geofence_data->op = GNSS_GEOFENCE_ALARM_MSG;
+      geofence_data->result = 0;
+      sscanf((char *)app[1], "%02d%02d%02d", &geofence_data->timestamp.hh,&geofence_data->timestamp.mm,&geofence_data->timestamp.ss);
+      sscanf((char *)app[2], "%04d%02d%02d", &geofence_data->timestamp.year,&geofence_data->timestamp.month,&geofence_data->timestamp.day);
+      sscanf((char *)app[3], "%d", &geofence_data->idAlarm);
+      sscanf((char *)app[9], "%d", &geofence_data->status[geofence_data->idAlarm]);
+     }
     
     valid_msg = 0;
     status = PARSE_SUCC;
@@ -751,11 +767,11 @@ ParseStatus_Typedef parse_pstmdatalog(Datalog_Infos *datalog_data, uint8_t *NMEA
 
 /**
  * @brief  
- * @param  MsgList_Infos Pointer to a MsgList_Infos struct
+ * @param  Ack_Info       Ack from Teseo
  * @param  NMEA           NMEA string read by the Gps expansion.
  * @retval ParseStatus_Typedef PARSE_SUCC if the parsing process goes ok, PARSE_FAIL if it doesn't
  */
-ParseStatus_Typedef parse_pstmsgl(MsgList_Infos *msgl_data, uint8_t *NMEA)
+ParseStatus_Typedef parse_pstmsgl(Ack_Info *ack, uint8_t *NMEA)
 {
   uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
   uint8_t valid_msg = 0;
@@ -793,10 +809,66 @@ ParseStatus_Typedef parse_pstmsgl(MsgList_Infos *msgl_data, uint8_t *NMEA)
   if (valid_msg == 1) {
     /* Enabling */
     if (strcmp((char *)app[0], "$PSTMCFGMSGLOK") == 0) {
-      msgl_data->result = 0;
+      *ack = 0;
     }
     if (strcmp((char *)app[0], "$PSTMCFGMSGLERROR") == 0) {
-      msgl_data->result = 1;
+      *ack = 1;
+    }
+
+    valid_msg = 0;
+    status = PARSE_SUCC;
+  }
+  return status;
+}
+
+/**
+ * @brief  
+ * @param  Ack_Info       Ack from Teseo
+ * @param  NMEA           NMEA string read by the Gps expansion.
+ * @retval ParseStatus_Typedef PARSE_SUCC if the parsing process goes ok, PARSE_FAIL if it doesn't
+ */
+ParseStatus_Typedef parse_pstmsavepar(Ack_Info *ack, uint8_t *NMEA)
+{
+  uint8_t app[MAX_MSG_LEN][MAX_MSG_LEN];
+  uint8_t valid_msg = 0;
+  
+  ParseStatus_Typedef status = PARSE_FAIL;
+
+  if(NMEA == NULL)
+    return status;
+
+  /* clear the app[][] buffer */ 
+  for (uint8_t i=0; i<MAX_MSG_LEN; i++) {
+    memset(app[i], 0, MAX_MSG_LEN);
+  }
+ 
+  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  {  
+    if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
+      app[j][k] = '\0';
+
+      if ((strcmp((char *)app[0], "$PSTMSAVEPAROK") == 0) ||
+          (strcmp((char *)app[0], "$PSTMSAVEPARERROR") == 0)) {
+        j++;
+        k = 0;
+        valid_msg = 1;
+        continue;
+      }
+      else {
+        while(NMEA[i++] != '\n');
+        j = k = 0;
+      }
+    }
+    app[j][k++] = NMEA[i];
+  }
+  
+  if (valid_msg == 1) {
+    /* Enabling */
+    if (strcmp((char *)app[0], "$PSTMSAVEPAROK") == 0) {
+      *ack = 0;
+    }
+    if (strcmp((char *)app[0], "$PSTMSAVEPARERROR") == 0) {
+      *ack = 1;
     }
 
     valid_msg = 0;

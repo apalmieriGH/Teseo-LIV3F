@@ -43,6 +43,7 @@
 
 static void _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData);
 static void _AppEventCallback(eTeseoLocEventType event, uint32_t data);
+static char msg[256];
 
 extern Serial serialDebug;
 #define TESEO_APP_LOG_INFO(...) serialDebug.printf(__VA_ARGS__)
@@ -71,7 +72,7 @@ createGPSProviderInstance(void)
 static void
 GetGNSMsgInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -149,7 +150,7 @@ GetGNSMsgInfos(tTeseoData *pData)
 static void
 GetGPGSTInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
     
@@ -204,7 +205,7 @@ GetGPGSTInfos(tTeseoData *pData)
 static void
 GetGPRMCInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
     
@@ -282,7 +283,7 @@ GetGPRMCInfos(tTeseoData *pData)
 static void
 GetGSAMsgInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -365,7 +366,7 @@ GetGSVMsgInfos(tTeseoData *pData)
 {
   uint8_t i;
   uint8_t tot_sats = pData->gsv_data.tot_sats;
-  char msg[256];
+//  char msg[256];
   
   char degree_sym = 176;
   
@@ -440,7 +441,7 @@ GetGSVMsgInfos(tTeseoData *pData)
 static void
 GetGeofenceInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
 
@@ -475,6 +476,23 @@ GetGeofenceInfos(tTeseoData *pData)
         TESEO_APP_LOG_INFO(msg);
       }
     }
+  }
+  if(pData->geofence_data.op == GNSS_GEOFENCE_ALARM_MSG) {
+    sprintf(msg, "Geofence Alarm:\t\t[ %s ]\t",
+          pData->geofence_data.result ? "ERROR" : "OK");
+    TESEO_APP_LOG_INFO(msg);
+    if(pData->geofence_data.result == 0) {
+      TESEO_APP_LOG_INFO("\r\n");
+      sprintf(msg, "Time:\t\t%02d:%02d:%02d\n",
+          pData->geofence_data.timestamp.hh,
+          pData->geofence_data.timestamp.mm,
+          pData->geofence_data.timestamp.ss);
+      TESEO_APP_LOG_INFO(msg);
+      int i = pData->geofence_data.idAlarm;
+      sprintf(msg, "Position circle[%d]:\t%s\n",
+              i, geofenceCirclePosition[pData->geofence_data.status[i]]);
+      TESEO_APP_LOG_INFO(msg);
+    }
   }  
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -488,7 +506,7 @@ GetGeofenceInfos(tTeseoData *pData)
 static void
 GetOdometerInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -515,7 +533,7 @@ GetOdometerInfos(tTeseoData *pData)
 static void
 GetDatalogInfos(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
   
@@ -549,19 +567,38 @@ GetDatalogInfos(tTeseoData *pData)
 }
 
 /** 
- * @brief  This function prints on the console the info about Message List
+ * @brief  This function prints on the console the ack about Message List cfg
  * @param  pData
  * @retval None
  */
 static void
-GetMsglInfos(tTeseoData *pData)
+GetMsgListAck(tTeseoData *pData)
 {
-  char msg[256];
+//  char msg[256];
   
   TESEO_APP_LOG_INFO("\r\n");
   
   sprintf(msg, "Msg List config:\t\t[ %s ]\t",
-          pData->msgl_data.result ? "ERROR" : "OK");
+          pData->ack ? "ERROR" : "OK");
+  TESEO_APP_LOG_INFO(msg);
+    
+  TESEO_APP_LOG_INFO("\r\n");
+}
+
+/** 
+ * @brief  This function prints on the console the ack about Message List cfg
+ * @param  pData
+ * @retval None
+ */
+static void
+GetAck(tTeseoData *pData)
+{
+//  char msg[256];
+  
+  TESEO_APP_LOG_INFO("\r\n");
+  
+  sprintf(msg, "Params configuration:\t\t[ %s ]\t",
+          pData->ack ? "ERROR" : "OK");
   TESEO_APP_LOG_INFO(msg);
     
   TESEO_APP_LOG_INFO("\r\n");
@@ -626,8 +663,12 @@ _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
       GetDatalogInfos(pData);
       break;
     case Teseo::PSTMSGL:
-      // GET Message List info
-      GetMsglInfos(pData);
+      // GET Message List ack
+      GetMsgListAck(pData);
+      break;
+    case Teseo::PSTMSAVEPAR:
+      // GET SAVE PAR ack
+      GetAck(pData);
       break;
     default:
       break;
