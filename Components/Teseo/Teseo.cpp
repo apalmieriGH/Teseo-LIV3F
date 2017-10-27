@@ -447,22 +447,36 @@ Teseo::outputHandler(uint32_t msgId, uint32_t msgType, tTeseoData *pData)
 
       /* Geofence Status */
       if(pData->geofence_data.op == GNSS_GEOFENCE_STATUS_MSG) {
-        geofenceStatus.timestamp.hh = pData->geofence_data.timestamp.hh;
-        geofenceStatus.timestamp.mm = pData->geofence_data.timestamp.mm;
-        geofenceStatus.timestamp.ss = pData->geofence_data.timestamp.ss;
-        geofenceStatus.timestamp.day = pData->geofence_data.timestamp.day;
-        geofenceStatus.timestamp.month = pData->geofence_data.timestamp.month;
-        geofenceStatus.timestamp.year = pData->geofence_data.timestamp.year;
-        geofenceStatus.currentStatus = pData->geofence_data.status;
-        geofenceStatus.numGeofences = MAX_GEOFENCES_NUM;
-        code = pData->geofence_data.result ?
-          GPS_ERROR_GEOFENCE_STATUS : GPS_ERROR_NONE;
-
+        code = pData->geofence_data.result ? GPS_ERROR_GEOFENCE_STATUS : GPS_ERROR_NONE;
+        if(code == GPS_ERROR_NONE) {
+          geofenceStatus.timestamp.hh = pData->geofence_data.timestamp.hh;
+          geofenceStatus.timestamp.mm = pData->geofence_data.timestamp.mm;
+          geofenceStatus.timestamp.ss = pData->geofence_data.timestamp.ss;
+          geofenceStatus.timestamp.day = pData->geofence_data.timestamp.day;
+          geofenceStatus.timestamp.month = pData->geofence_data.timestamp.month;
+          geofenceStatus.timestamp.year = pData->geofence_data.timestamp.year;
+          geofenceStatus.currentStatus = pData->geofence_data.status;
+          geofenceStatus.numGeofences = MAX_GEOFENCES_NUM;
+        }
         if (geofenceStatusMessageCallback) {
           geofenceStatusMessageCallback(&geofenceStatus, code);
         }
       }
 
+      /* Geofence Alarm */
+      if(pData->geofence_data.op == GNSS_GEOFENCE_ALARM_MSG) {
+        code = pData->geofence_data.result ? GPS_ERROR_GEOFENCE_STATUS : GPS_ERROR_NONE;
+        if(code == GPS_ERROR_NONE) {
+          geofenceStatus.timestamp.hh = pData->geofence_data.timestamp.hh;
+          geofenceStatus.timestamp.mm = pData->geofence_data.timestamp.mm;
+          geofenceStatus.timestamp.ss = pData->geofence_data.timestamp.ss;
+          geofenceStatus.currentStatus = pData->geofence_data.status;
+          geofenceStatus.idAlarm = pData->geofence_data.idAlarm;
+        }
+        if (geofenceStatusMessageCallback) {
+          geofenceStatusMessageCallback(&geofenceStatus, code);
+        }
+      }
     }
     break;
 

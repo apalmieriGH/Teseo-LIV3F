@@ -292,7 +292,7 @@ typedef struct Timestamp_Info {
 typedef struct Geofence_Infos {
   uint8_t op;          /**< Geofence type message (configuration/status) */
   uint8_t result;      /**< Geofence cfg/request result (OK/ERROR) */
-  int idAlarm;      /**< Id of the circle raising the alarm */
+  int idAlarm;         /**< Id of the circle raising the alarm */
   Timestamp_Info timestamp;
   int status[MAX_GEOFENCES_NUM];
 } Geofence_Infos;
