@@ -45,6 +45,13 @@ static void _AppOutputCallback(uint32_t msgId, uint32_t msgType, tTeseoData *pDa
 static void _AppEventCallback(eTeseoLocEventType event, uint32_t data);
 static char msg[256];
 
+static char *geofenceCirclePosition[] = {
+  "Unknown",
+  "Outside",
+  "Boundary",
+  "Inside"
+};
+
 extern Serial serialDebug;
 #define TESEO_APP_LOG_INFO(...) serialDebug.printf(__VA_ARGS__)
 
@@ -368,7 +375,7 @@ GetGSVMsgInfos(tTeseoData *pData)
   uint8_t tot_sats = pData->gsv_data.tot_sats;
 //  char msg[256];
   
-  char degree_sym = 176;
+  char degree_sym = 248;
   
   TESEO_APP_LOG_INFO("\r\n");
   

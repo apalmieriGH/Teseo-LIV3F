@@ -87,7 +87,7 @@ ParseStatus_Typedef parse_gpgga(GPGGA_Infos *gpgga_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -153,7 +153,7 @@ ParseStatus_Typedef parse_gnsmsg (GNS_Infos *gns_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
   
-  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -223,7 +223,7 @@ ParseStatus_Typedef parse_gpgst (GPGST_Infos *gpgst_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
 
-  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -282,7 +282,7 @@ ParseStatus_Typedef parse_gprmc (GPRMC_Infos *gprmc_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
   
-  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -345,7 +345,7 @@ ParseStatus_Typedef parse_gsamsg (GSA_Infos *gsa_data, uint8_t *NMEA)
     memset(app[i], 0, 19);
   }
   
-  for (int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for (unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -403,8 +403,8 @@ ParseStatus_Typedef parse_gsvmsg(GSV_Infos *gsv_data, uint8_t *NMEA)
   int curr_msg;
   uint8_t right_msg = 0;
   uint8_t valid_gsv_msg = 0;
-  int i, j, k;
-  int l = 0;
+  unsigned i, j, k;
+  unsigned l = 0;
   
   ParseStatus_Typedef status = PARSE_FAIL;
   
@@ -511,7 +511,7 @@ ParseStatus_Typedef parse_pstmgeofence(Geofence_Infos *geofence_data, uint8_t *N
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -602,7 +602,7 @@ ParseStatus_Typedef parse_pstmodo(Odometer_Infos *odo_data, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -684,7 +684,7 @@ ParseStatus_Typedef parse_pstmdatalog(Datalog_Infos *datalog_data, uint8_t *NMEA
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -786,7 +786,7 @@ ParseStatus_Typedef parse_pstmsgl(Ack_Info *ack, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';
@@ -842,7 +842,7 @@ ParseStatus_Typedef parse_pstmsavepar(Ack_Info *ack, uint8_t *NMEA)
     memset(app[i], 0, MAX_MSG_LEN);
   }
  
-  for(int i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
+  for(unsigned i = 0, j = 0, k = 0; NMEA[i] != '\n' && i < strlen((char *)NMEA) - 1; i++)
   {  
     if ((NMEA[i] == ',') || (NMEA[i] == '*')) {
       app[j][k] = '\0';

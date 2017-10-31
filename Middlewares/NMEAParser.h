@@ -268,12 +268,6 @@ typedef struct GSV_Infos {
   int checksum;                         /**< Checksum of the message bytes */
 } GSV_Infos;
 
-static char *geofenceCirclePosition[] = {
-  "Unknown",
-  "Outside",
-  "Boundary",
-  "Inside"
-};
 /**
  * @brief Data structure that contains timestamp
  */

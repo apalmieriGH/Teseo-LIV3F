@@ -56,25 +56,25 @@ struct teseoCmd {
 
 static struct teseoCmd teseoCmds[] = {
   [Teseo::TEST] = {
-    .cmd = "$\n\r",
+    .cmd = (char*)"$\n\r",
   },
   [Teseo::GETSWVER] = {
-    .cmd = "$PSTMGETSWVER,6\n\r",
+    .cmd = (char*)"$PSTMGETSWVER,6\n\r",
   },
   [Teseo::FORCESTANDBY] = {
-    .cmd = "$PSTMFORCESTANDBY,00010\n\r",
+    .cmd = (char*)"$PSTMFORCESTANDBY,00010\n\r",
   },
   [Teseo::RFTESTON] = {
-    .cmd  = "$PSTMRFTESTON,16\n\r",
+    .cmd  = (char*)"$PSTMRFTESTON,16\n\r",
   },
   [Teseo::RFTESTOFF] = {
-    .cmd  = "$PSTMRFTESTOFF\n\r",
+    .cmd  = (char*)"$PSTMRFTESTOFF\n\r",
   },
   [Teseo::LOWPOWER] = {
-    .cmd  = "$PSTMLOWPOWERONOFF,1,0,000,05,0,1,000,1,00010,01,0,0,1,01\n\r",
+    .cmd  = (char*)"$PSTMLOWPOWERONOFF,1,0,000,05,0,1,000,1,00010,01,0,0,1,01\n\r",
   },
   [Teseo::FWUPDATE] = {
-    .cmd  = "$PSTMFWUPGRADE\n\r",
+    .cmd  = (char*)"$PSTMFWUPGRADE\n\r",
   }
 };
 
@@ -364,7 +364,7 @@ Teseo::start(void)
     serialStreamThread = new (std::nothrow) Thread();
     if(serialStreamThread != NULL) {
       serialStreamThread->set_priority(osPriorityRealtime);
-      serialStreamThread->start(_UARTStreamProcess, this);
+      serialStreamThread->start(callback(_UARTStreamProcess, this));
     } else {
       TESEO_LOG_INFO("Error allocating serialStreamThread\r\n");
     }
