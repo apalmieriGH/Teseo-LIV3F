@@ -1,0 +1,31 @@
+{
+  "name": "Teseo-LIV3F",
+  "version": "1.0.0",
+  "description": "GPSProvider wrapper library for STMicroelectronics' X-NUCLEO-GNSS1A1 Expansion Board.",
+  "keywords": [
+    "expansion",
+    "board",
+    "x-nucleo",
+    "nucleo",
+    "ST",
+    "STM",
+    "GPS",
+    "GNSS"
+  ],
+  "author": "Andrea Palmieri",
+  "repository": {
+    "url": "https://github.com/apalmieriGH/Teseo-LIV3F.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/apalmieriGH/Teseo-LIV3F",
+  "licenses": [
+    {
+      "url": "https://spdx.org/licenses/Apache-2.0",
+      "type": "Apache-2.0"
+    }
+  ],
+  "dependencies": {
+    "mbed-drivers": ">=0.11.3",
+    "GPSProvider": "^1.0.0"
+  }
+}
